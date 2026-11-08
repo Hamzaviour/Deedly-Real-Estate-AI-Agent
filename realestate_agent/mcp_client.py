@@ -16,7 +16,9 @@ class ListingsMCPClient:
             command=sys.executable,
             args=["-m", "realestate_agent.mcp_server"],
             cwd=str(ROOT),
-            env=dict(os.environ),
+            # Pass the parent's import path so the server finds the same packages, including
+            # on hosts that vendor dependencies outside site-packages.
+            env={**os.environ, "PYTHONPATH": os.pathsep.join(p for p in sys.path if p)},
         )
         self._transport = stdio_client(params)
         read, write = await self._transport.__aenter__()

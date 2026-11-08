@@ -1,0 +1,24 @@
+[project]
+name = "deedly-property-advisor"
+version = "1.0.0"
+description = "AI property advisor for Lahore: portal search plus an LLM agent with MCP, RAG and memory."
+readme = "README.md"
+requires-python = ">=3.12"
+# Hosted (serverless) dependency set. RAG uses the built-in BM25 retriever here.
+# For the full local install with embeddings and Chroma, use requirements.txt.
+dependencies = [
+    "anthropic>=0.120,<1",
+    "openai>=1.50",
+    "mcp>=1.29,<2",
+    "python-dotenv>=1.0",
+    "starlette>=0.40",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+embeddings = ["chromadb>=1.5,<2", "fastembed>=0.8,<1"]
+dev = ["pytest>=9.0"]
+
+[tool.vercel]
+entrypoint = "app:app"

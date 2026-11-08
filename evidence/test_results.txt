@@ -1,6 +1,6 @@
 python -m pytest tests -q
 
-60 passed in 354.98s (0:05:54)
+68 passed in 316.19s (0:05:16)
 
 Run on 2026-11-08, Python 3.14, Windows 11. No API key needed: the LLM is scripted;
-MCP, SQLite, embeddings and Chroma are real.
+MCP, SQLite, embeddings, Chroma and the BM25 retriever are real.

@@ -24,6 +24,8 @@ def require_api_key() -> None:
 
 
 def runtime_dir() -> Path:
-    path = Path(os.getenv("RE_AGENT_RUNTIME", ROOT / "runtime"))
+    # Serverless hosts only allow writes under /tmp.
+    default = Path("/tmp/deedly") if os.getenv("VERCEL") else ROOT / "runtime"
+    path = Path(os.getenv("RE_AGENT_RUNTIME", default))
     path.mkdir(parents=True, exist_ok=True)
     return path

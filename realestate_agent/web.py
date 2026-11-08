@@ -7,6 +7,7 @@ import contextlib
 import json
 import os
 import re
+import time
 import uuid
 from pathlib import Path
 
@@ -26,11 +27,16 @@ from .config import MODEL
 from .llm import make_llm, model_name
 from .mcp_client import ListingsMCPClient
 from .memory import LongTermMemory
-from .rag import KnowledgeBase
+from .rag import make_knowledge
 
 PAGE = Path(__file__).with_name("static") / "index.html"
 HOST, PORT = "127.0.0.1", int(os.getenv("RE_AGENT_PORT", "8011"))
 APPROVAL_TIMEOUT_SECONDS = 300
+HOSTED = bool(os.getenv("VERCEL"))
+# Locally only localhost is served, which blocks DNS rebinding. A hosted deployment is public.
+ALLOWED_HOSTS = ["*"] if HOSTED else ["127.0.0.1", "localhost", "testserver"]
+# Public deployments spend the owner's LLM key, so each visitor gets a small chat budget.
+CHAT_LIMIT, CHAT_WINDOW_SECONDS = int(os.getenv("RE_AGENT_CHAT_LIMIT", "25")), 3600
 MAX_MESSAGE_CHARS = 4000
 STATUSES = {"available", "under_offer", "sold"}
 NO_KEY_MESSAGE = (
@@ -112,13 +118,25 @@ def create_app(llm=None) -> Starlette:
             state["llm"] = llm
         else:
             state["llm"] = make_llm()
-        state["knowledge"] = KnowledgeBase()
+        state["knowledge"] = make_knowledge()
         state["memory"] = LongTermMemory()
         state["sessions"] = {}
         async with ListingsMCPClient() as mcp:
             state["mcp"] = mcp
             state["tools"] = await mcp.list_tools()
             yield
+
+    hits: dict[str, list[float]] = {}
+
+    def allow_chat(request: Request) -> bool:
+        ip = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() or "unknown"
+        now = time.monotonic()
+        recent = [t for t in hits.get(ip, []) if now - t < CHAT_WINDOW_SECONDS]
+        if len(recent) >= CHAT_LIMIT:
+            hits[ip] = recent
+            return False
+        hits[ip] = recent + [now]
+        return True
 
     def session_for(user: str) -> ChatSession:
         if user not in state["sessions"]:
@@ -148,6 +166,7 @@ def create_app(llm=None) -> Starlette:
             {
                 "llm_ready": state["llm"] is not None,
                 "model": model_name(state["llm"], MODEL),
+                "rag": type(state["knowledge"]).__name__,
                 "mcp_tools": [t["name"] for t in state["tools"]],
                 "memories": (memories := state["memory"].load(user)),
                 "shortlist": sorted(shortlist_ids(memories)),
@@ -162,6 +181,9 @@ def create_app(llm=None) -> Starlette:
             return JSONResponse({"error": "Message must be 1 to 4000 characters."}, status_code=400)
         if state["llm"] is None:
             return JSONResponse({"error": NO_KEY_MESSAGE}, status_code=503)
+        if HOSTED and not allow_chat(request):
+            return JSONResponse({"error": "Chat limit reached for now. Please try again later."},
+                                status_code=429)
         session = session_for(clean_user(body.get("user")))
         if session.lock.locked():
             return JSONResponse({"error": "Still working on your last message."}, status_code=409)
@@ -239,7 +261,7 @@ def create_app(llm=None) -> Starlette:
         lifespan=lifespan,
         middleware=[
             # Blocks DNS rebinding: only requests addressed to localhost are served.
-            Middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
+            Middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
         ],
     )
 

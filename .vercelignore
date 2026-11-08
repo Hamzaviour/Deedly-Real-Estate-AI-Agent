@@ -1,0 +1,9 @@
+.env
+runtime/
+tests/
+docs/
+evidence/
+requirements.txt
+lahore_house_images.json
+**/__pycache__/
+.pytest_cache/

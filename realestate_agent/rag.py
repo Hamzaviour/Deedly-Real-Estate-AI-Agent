@@ -1,9 +1,18 @@
-"""RAG pipeline: chunk Markdown documents, embed them, store in Chroma, retrieve with sources."""
-import re
-from pathlib import Path
+"""RAG pipeline: chunk Markdown documents, embed them, store in Chroma, retrieve with sources.
 
-import chromadb
-from fastembed import TextEmbedding
+Two retrievers share one interface (`retrieve(query, k)` returning passages with citations):
+
+- KnowledgeBase: local embeddings (fastembed) in a Chroma index. The default.
+- LexicalKnowledgeBase: BM25 keyword ranking in pure Python, for hosts where the embedding
+  model and Chroma are too heavy, such as serverless deployments.
+
+Choose with RE_AGENT_RAG=embeddings|lexical. Unset, embeddings are used when installed.
+"""
+import math
+import os
+import re
+from collections import Counter
+from pathlib import Path
 
 from .config import EMBEDDING_MODEL, KNOWLEDGE_DIR, runtime_dir
 
@@ -36,6 +45,9 @@ def chunk_markdown(text: str) -> list[tuple[str, str]]:
 
 class KnowledgeBase:
     def __init__(self, knowledge_dir: Path = KNOWLEDGE_DIR):
+        import chromadb
+        from fastembed import TextEmbedding
+
         self.knowledge_dir = knowledge_dir
         self._embedder = TextEmbedding(EMBEDDING_MODEL)
         client = chromadb.PersistentClient(path=str(runtime_dir() / "chroma"))
@@ -85,3 +97,77 @@ class KnowledgeBase:
                     }
                 )
         return results
+
+
+STOPWORDS = set("""a an and are as at be by can do does for from has have how i if in is it its me my
+of on or should so that the their there this to was what when where which who will with you your
+much many about any into than then they them we our us""".split())
+LEXICAL_MIN_SCORE = 0.25
+
+
+def _terms(text: str) -> list[str]:
+    return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in STOPWORDS and len(w) > 1]
+
+
+class LexicalKnowledgeBase:
+    """BM25 retrieval over the same chunks and citations, with no model download."""
+
+    K1, B = 1.5, 0.75
+
+    def __init__(self, knowledge_dir: Path = KNOWLEDGE_DIR):
+        self.knowledge_dir = knowledge_dir
+        self.ingest()
+
+    def ingest(self) -> dict:
+        self.chunks = []
+        files = sorted(self.knowledge_dir.glob("*.md"))
+        for path in files:
+            for n, (section, chunk) in enumerate(chunk_markdown(path.read_text(encoding="utf-8"))):
+                terms = _terms(f"{section} {chunk}")
+                self.chunks.append({"id": f"{path.name}#{n}", "source": path.name, "section": section,
+                                    "text": chunk, "tf": Counter(terms), "len": len(terms)})
+        if not self.chunks:
+            raise ValueError(f"No documents found in {self.knowledge_dir}")
+        self.avg_len = sum(c["len"] for c in self.chunks) / len(self.chunks)
+        df = Counter(t for c in self.chunks for t in c["tf"])
+        n = len(self.chunks)
+        self.idf = {t: math.log(1 + (n - f + 0.5) / (f + 0.5)) for t, f in df.items()}
+        return {"documents": len(files), "chunks": n}
+
+    def retrieve(self, query: str, k: int = 4) -> list[dict]:
+        q = set(_terms(query))
+        if not q:
+            return []
+        scored = []
+        for c in self.chunks:
+            s = 0.0
+            for term in q & c["tf"].keys():
+                tf = c["tf"][term]
+                s += self.idf[term] * tf * (self.K1 + 1) / (
+                    tf + self.K1 * (1 - self.B + self.B * c["len"] / self.avg_len))
+            if s:
+                scored.append((s, c))
+        if not scored:
+            return []
+        scored.sort(key=lambda x: -x[0])
+        best = scored[0][0]
+        results = []
+        for s, c in scored[:k]:
+            # Relative score in 0..1, so weak matches next to a strong one are dropped.
+            similarity = s / best * min(1.0, best / 6)
+            if similarity >= LEXICAL_MIN_SCORE:
+                results.append({"citation": c["id"], "source": c["source"], "section": c["section"],
+                                "similarity": round(similarity, 3), "text": c["text"]})
+        return results
+
+
+def make_knowledge():
+    """Pick the retriever from RE_AGENT_RAG, falling back to BM25 if embeddings are unavailable."""
+    mode = os.getenv("RE_AGENT_RAG", "lexical" if os.getenv("VERCEL") else "").strip().lower()
+    if mode != "lexical":
+        try:
+            return KnowledgeBase()
+        except ImportError:
+            if mode == "embeddings":
+                raise
+    return LexicalKnowledgeBase()

@@ -11,7 +11,7 @@
 ![MCP](https://img.shields.io/badge/MCP-stdio%20server-17403C)
 ![RAG](https://img.shields.io/badge/RAG-Chroma%20%2B%20fastembed-2E8A5C)
 ![LLM](https://img.shields.io/badge/LLM-Groq%20%7C%20Anthropic-B4472C)
-![Tests](https://img.shields.io/badge/tests-60%20passing-2E8A5C)
+![Tests](https://img.shields.io/badge/tests-68%20passing-2E8A5C)
 
 Assignment 2, Agent Based Modeling (AIDE3313), scenario 38: *retrieve property details, remember buyer preferences and compare options.*
 
@@ -166,7 +166,7 @@ More detail, including the system prompt justification, is in [docs/ARCHITECTURE
 | LLM | Groq (`llama-3.3-70b-versatile`, OpenAI-compatible API through the `openai` SDK) or Anthropic (`claude-opus-5-5` through the `anthropic` SDK) |
 | Agent loop | Hand-written tool-use loop with tracing and an approval gate |
 | Tools protocol | Model Context Protocol: `FastMCP` server over stdio, official `ClientSession` client |
-| RAG | `fastembed` (`BAAI/bge-small-en-v1.5`, runs locally) + `chromadb` (cosine), section-aware chunking |
+| RAG | `fastembed` (`BAAI/bge-small-en-v1.5`, runs locally) + `chromadb` (cosine), section-aware chunking. Hosted builds use a pure-Python BM25 retriever over the same chunks and citations |
 | Storage | SQLite for listings, viewing requests and buyer memory |
 | Config | `python-dotenv` |
 | Testing | `pytest`, Starlette `TestClient`, a scripted LLM for deterministic agent tests |
@@ -199,17 +199,20 @@ real-estate-agent/
 │       └── homes/               # Listing photos, photos.json, CREDITS.md
 ├── data/properties.json         # 12 synthetic listings (seed data)
 ├── knowledge/                   # 6 Markdown guides used by RAG
-├── tests/                       # 60 tests: agent, MCP, RAG, memory, properties, web, Groq adapter
+├── tests/                       # 68 tests: agent, MCP, RAG, memory, properties, web, Groq adapter
 ├── docs/
 │   ├── ARCHITECTURE.md          # Design, components, prompt justification, limitations
 │   ├── architecture.png         # Architecture diagram
 │   ├── make_diagram.py          # Script that draws the diagram
 │   └── screenshots/             # Images used in this README
 ├── evidence/test_results.txt    # Latest test run summary
+├── app.py                       # Hosted entrypoint (top-level ASGI app)
+├── pyproject.toml               # Hosted dependency set and Vercel entrypoint
+├── vercel.json                  # Function duration and bundle excludes
 ├── demo.py                      # Scripted end-to-end demo with the real LLM
 ├── DESIGN.md                    # Design system: colours, components, mascot states
 ├── PRODUCT.md                   # Product brief
-├── requirements.txt
+├── requirements.txt             # Full local install, including embeddings and Chroma
 └── .env.example                 # Copy to .env and add one API key
 ```
 
@@ -323,7 +326,9 @@ python -m realestate_agent.ingest
 | `RE_AGENT_MODEL` | `claude-opus-5-5` | Anthropic model |
 | `RE_AGENT_PROVIDER` | auto | `groq` or `anthropic`. Auto picks Anthropic if its key is set, otherwise Groq |
 | `RE_AGENT_PORT` | `8011` | Web server port |
-| `RE_AGENT_RUNTIME` | `./runtime` | Where SQLite databases and the Chroma index are stored |
+| `RE_AGENT_RUNTIME` | `./runtime` (`/tmp/deedly` on Vercel) | Where SQLite databases and the Chroma index are stored |
+| `RE_AGENT_RAG` | auto | `embeddings` or `lexical` (BM25). Auto uses embeddings when installed, BM25 on Vercel |
+| `RE_AGENT_CHAT_LIMIT` | `25` | Hosted only: chat messages per visitor per hour, to protect the API key |
 
 ---
 
@@ -373,7 +378,7 @@ No API key is needed. The tests use the real MCP server, real SQLite, real embed
 |---|---|
 | `test_agent.py` | Tool loop, tracing, approval gate, error and refusal handling, history repair |
 | `test_mcp.py` | MCP discovery and calls over stdio |
-| `test_rag.py` | Chunking, retrieval quality, similarity floor |
+| `test_rag.py` | Chunking, retrieval quality and relevance floor for both embeddings and BM25 |
 | `test_memory.py` | Save, replace, forget, isolation between buyers |
 | `test_properties.py` | Search, compare ranking, payment maths, status changes |
 | `test_web.py` | Pages, streaming chat, approval, sessions, shortlist, security checks |
@@ -383,7 +388,29 @@ No API key is needed. The tests use the real MCP server, real SQLite, real embed
 
 ## Deployment
 
-Deedly is built to run locally: the MCP server is a subprocess, RAG downloads a local embedding model, and sessions and approvals live in server memory. A deployment target therefore needs a long-running Python process with a writable disk. See the deployment section of the repository for the hosted version and its notes.
+### Vercel
+
+The repository deploys to Vercel as a Python (ASGI) function with no extra setup:
+
+- `app.py` exposes the Starlette `app`, and `pyproject.toml` names it as the entrypoint.
+- `pyproject.toml` holds a **light dependency set**. RAG switches to the built-in **BM25** retriever, so no embedding model download or Chroma is needed. Citations and the relevance floor work the same way.
+- Runtime data goes to `/tmp/deedly`. Listings are re-seeded from `data/properties.json` on each cold start.
+- The MCP server still runs as a real stdio subprocess inside the function.
+- Each visitor gets a small hourly chat budget (`RE_AGENT_CHAT_LIMIT`), because a public deployment spends the owner's API key.
+
+Steps:
+
+1. Import the GitHub repository in Vercel, or run `vercel deploy --prod` from a clean clone.
+2. In **Project → Settings → Environment Variables**, add `GROQ_API_KEY` (or `ANTHROPIC_API_KEY`), then redeploy.
+
+**Known trade-offs on serverless:** conversations, shortlists and status changes live in instance memory and `/tmp`, so a cold start resets them, and a viewing approval can expire if the platform moves the request to a different instance. For a demo that must behave exactly like local, run it locally or on a host with a long-running process and a persistent disk.
+
+### Local or a long-running host
+
+```bash
+pip install -r requirements.txt
+python -m realestate_agent.web
+```
 
 ---
 

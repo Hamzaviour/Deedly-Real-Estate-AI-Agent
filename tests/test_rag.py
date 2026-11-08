@@ -47,3 +47,31 @@ def test_chunks_respect_size_limit_and_keep_all_sections():
     assert {title for title, _ in chunks} >= {"One", "Two"}
     assert all(len(body) <= 800 + len("One: ") for _, body in chunks)
     assert len([c for c in chunks if c[0] == "One"]) > 1
+
+
+LEXICAL_CASES = [
+    ("How much deposit should I pay?", "01_buying_process.md"),
+    ("What should a lawyer check about ownership and the title deed?", "02_title_verification.md"),
+    ("What share of my income can go to the monthly loan payment?", "03_financing_affordability.md"),
+    ("How do I check for damp and cracks when inspecting a house?", "04_inspection_guide.md"),
+    ("Does Allama Iqbal Town have waterlogging in the monsoon?", "05_neighbourhood_guide.md"),
+    ("Is a viewing request a guaranteed appointment?", "06_advisory_policy.md"),
+]
+
+
+@pytest.mark.parametrize("query,expected", LEXICAL_CASES)
+def test_lexical_retriever_finds_expected_document(query, expected):
+    from realestate_agent.rag import LexicalKnowledgeBase
+
+    results = LexicalKnowledgeBase().retrieve(query)
+    assert results and results[0]["source"] == expected
+    assert results[0]["citation"].startswith(expected + "#")
+
+
+@pytest.mark.parametrize(
+    "query", ["What is the boiling point of tungsten?", "Best chocolate cake recipe with frosting"]
+)
+def test_lexical_retriever_ignores_unrelated_queries(query):
+    from realestate_agent.rag import LexicalKnowledgeBase
+
+    assert LexicalKnowledgeBase().retrieve(query) == []
