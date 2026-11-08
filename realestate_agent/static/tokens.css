@@ -1,0 +1,51 @@
+/* Deedly brand tokens. Shared by the app and the brand board. */
+@font-face {
+  font-family: "Archivo";
+  src: url("/static/fonts/archivo-wdth.woff2") format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  /* Lahore brick, deep canal teal, warm sand. */
+  --bg: #f6f3ee;
+  --surface: #ffffff;
+  --ink: #1a1d21;
+  --muted: #62666d;
+  --line: #e6e0d6;
+  --brick: #b4472c;
+  --brick-deep: #8f341d;
+  --brick-tint: #f8e8e1;
+  --teal: #17403c;
+  --teal-deep: #0e2a27;
+  --teal-soft: #a9c4bf;
+  --gold: #e2a43a;
+  --gold-ink: #4d3500;
+  --gold-tint: #fbf0d9;
+  --ok: #2e8a5c;
+  --danger: #c0392b;
+  --shadow-sm: 0 1px 2px rgb(26 29 33 / .06), 0 2px 8px rgb(26 29 33 / .05);
+  --shadow-md: 0 6px 24px rgb(26 29 33 / .10), 0 2px 6px rgb(26 29 33 / .06);
+  --shadow-lg: 0 24px 60px rgb(14 42 39 / .28);
+  --radius: 14px;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --font: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --code: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* Old names, kept so the brand board still renders. */
+  --cobalt: var(--brick);
+  --cobalt-deep: var(--brick-deep);
+  --cobalt-tint: var(--brick-tint);
+  --on-cobalt: #ffffff;
+  --on-cobalt-soft: #f3d6cc;
+  --paper: var(--surface);
+  --sheet: var(--bg);
+  --rule: var(--line);
+  --stamp: var(--danger);
+  --pencil: var(--gold);
+  --pencil-ink: var(--gold-ink);
+  --pencil-tint: var(--gold-tint);
+  --record: var(--ok);
+}

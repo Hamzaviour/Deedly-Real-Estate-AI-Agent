@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deedly, homes in Lahore</title>
+<link rel="icon" href="/static/brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/tokens.css?v=3">
+<style>
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 120px; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font);
+         font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, p { margin: 0; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: .5; }
+  :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+  code { font-family: var(--code); font-size: .86em; }
+  svg.i { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .wrap { width: min(1240px, 100% - 48px); margin-inline: auto; }
+
+  /* ---------- Proof bar: thin, quiet, always on top ---------- */
+  .top { position: sticky; top: 0; z-index: 40; }
+  .proofbar { background: var(--teal-deep); color: var(--teal-soft); font-size: 11.5px; line-height: 1; }
+  .proofbar .wrap { display: flex; align-items: center; gap: 4px; height: 28px; overflow-x: auto; scrollbar-width: none; }
+  .proofbar .wrap::-webkit-scrollbar { display: none; }
+  .pb-title { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 10px; color: rgb(255 255 255 / .45); margin-right: 6px; white-space: nowrap; }
+  .pf { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px;
+        white-space: nowrap; border: 0; background: none; color: inherit; font-size: inherit; cursor: default; }
+  .pf .dot { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid rgb(255 255 255 / .35); transition: background .3s, border-color .3s; }
+  .pf.on { color: #fff; }
+  .pf.on .dot { background: #4fd18b; border-color: #4fd18b; box-shadow: 0 0 0 3px rgb(79 209 139 / .18); }
+  .pf.fresh .dot { animation: pop .5s var(--ease); }
+  @keyframes pop { 0% { transform: scale(.4); } 60% { transform: scale(1.6); } 100% { transform: scale(1); } }
+  .pf:hover, .pf:focus-visible { background: rgb(255 255 255 / .08); }
+  .tip { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: max-content; max-width: 260px; padding: 8px 10px;
+         background: var(--ink); color: #fff; border-radius: 8px; font-size: 12px; line-height: 1.35; white-space: normal;
+         box-shadow: var(--shadow-md); opacity: 0; translate: 0 -4px; pointer-events: none; transition: opacity .15s, translate .15s; }
+  .pf:hover .tip, .pf:focus-visible .tip { opacity: 1; translate: 0 0; }
+  .pb-sep { flex: 1; min-width: 12px; }
+  .pb-count { border: 0; background: none; color: var(--teal-soft); font-size: inherit; padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+  .pb-count b { color: #fff; font-weight: 700; margin-left: 3px; }
+  .pb-count:hover, .pb-count[aria-expanded="true"] { background: rgb(255 255 255 / .1); color: #fff; }
+
+  .record { position: absolute; right: max(24px, (100% - 1240px) / 2); top: 32px; z-index: 50; width: min(560px, calc(100vw - 32px));
+            max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+            box-shadow: var(--shadow-lg); padding: 18px; display: grid; gap: 16px; transform-origin: top right;
+            animation: drop .25s var(--ease); }
+  .record[hidden] { display: none; }
+  @keyframes drop { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+  .record h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 13.5px; }
+  .memo { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; overflow-wrap: anywhere; }
+  .memo:last-child { border-bottom: 0; }
+  .memo small { color: var(--muted); }
+  details.step { border-bottom: 1px solid var(--line); padding: 6px 0; font-size: 13.5px; }
+  details.step summary { cursor: pointer; overflow-wrap: anywhere; }
+  .via { font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; background: var(--teal); color: #fff; }
+  .via.local { background: var(--muted); }
+  .fail { color: var(--danger); font-weight: 700; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.45 var(--code); color: var(--muted); margin: 6px 0 0; max-height: 200px; overflow-y: auto; }
+
+  /* ---------- Header ---------- */
+  header.site { background: rgb(255 255 255 / .92); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid transparent; transition: border-color .2s, box-shadow .2s; }
+  .scrolled header.site { border-color: var(--line); box-shadow: var(--shadow-sm); }
+  header.site .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 800; font-stretch: 85%; letter-spacing: -.01em; color: var(--ink); text-decoration: none; }
+  .brand svg { width: 30px; height: 30px; color: var(--brick); }
+  nav.links { display: flex; gap: 4px; }
+  nav.links a { padding: 8px 12px; border-radius: 8px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 15px; transition: color .15s, background .15s; }
+  nav.links a:hover { color: var(--ink); background: var(--bg); }
+  .head-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .buyer-field { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 12px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; color: var(--muted); }
+  .buyer-field input { width: 110px; border: 0; background: none; padding: 4px 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .buyer-field input:focus { outline: none; }
+  .buyer-field:focus-within { border-color: var(--brick); }
+  .icon-btn { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--bg); color: var(--ink); }
+  .icon-btn:hover { background: var(--line); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: 1px solid transparent;
+         font-weight: 700; font-size: 15px; transition: background .15s, transform .15s var(--ease), box-shadow .15s; white-space: nowrap; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn.primary { background: var(--brick); color: #fff; }
+  .btn.primary:hover:not(:disabled) { background: var(--brick-deep); box-shadow: 0 6px 18px rgb(180 71 44 / .3); }
+  .btn.dark { background: var(--teal); color: #fff; }
+  .btn.dark:hover:not(:disabled) { background: var(--teal-deep); }
+  .btn.ghost { background: var(--surface); border-color: var(--line); color: var(--ink); }
+  .btn.ghost:hover:not(:disabled) { border-color: var(--ink); }
+  .btn.sm { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
+
+  /* ---------- Hero ---------- */
+  .hero { position: relative; isolation: isolate; color: #fff; padding: 84px 0 120px; overflow: hidden; }
+  .hero-bg { position: absolute; inset: 0; z-index: -2; background: var(--teal-deep) url("/static/homes/P-108-1.jpg") center 40% / cover no-repeat; transform: scale(1.04); animation: settle 1.6s var(--ease) both; }
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(100deg, rgb(14 42 39 / .92) 0%, rgb(14 42 39 / .7) 45%, rgb(14 42 39 / .25) 100%); }
+  @keyframes settle { from { transform: scale(1.12); } }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: rgb(255 255 255 / .12); backdrop-filter: blur(4px); }
+  .hero h1 { margin: 18px 0 12px; font-size: clamp(38px, 5vw, 64px); line-height: 1.02; font-weight: 800; font-stretch: 82%; letter-spacing: -.02em; max-width: 14ch; text-wrap: balance; }
+  .hero p.lede { font-size: 18px; color: rgb(255 255 255 / .82); max-width: 46ch; }
+  .rise { animation: rise .8s var(--ease) both; }
+  .rise.d1 { animation-delay: .08s; } .rise.d2 { animation-delay: .16s; } .rise.d3 { animation-delay: .26s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+
+  .search { margin-top: -78px; position: relative; z-index: 5; }
+  .search-card { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-lg); padding: 10px 10px 16px; }
+  .tabs { display: flex; gap: 4px; padding: 4px 8px 12px; }
+  .tab { border: 0; background: none; padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--muted); transition: background .2s, color .2s; }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .fields { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 8px; padding: 0 6px; }
+  .field { display: flex; flex-direction: column; gap: 2px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; transition: border-color .15s, box-shadow .15s; min-width: 0; }
+  .field:focus-within { border-color: var(--brick); box-shadow: 0 0 0 3px var(--brick-tint); }
+  .field span { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .field select, .field input { border: 0; background: none; padding: 2px 0; font-size: 15px; font-weight: 600; width: 100%; min-width: 0; }
+  .field select:focus, .field input:focus { outline: none; }
+  .search .btn.primary { padding-inline: 26px; border-radius: 12px; font-size: 16px; }
+  .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 14px 0; font-size: 13.5px; color: var(--muted); }
+  .chip { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; transition: border-color .15s, background .15s, color .15s; }
+  .chip:hover { border-color: var(--teal); color: var(--teal); }
+  .chip[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+  /* ---------- Sections ---------- */
+  section.block { padding: 56px 0 8px; }
+  .sec-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .sec-head h2 { font-size: clamp(26px, 2.6vw, 34px); line-height: 1.1; font-weight: 800; font-stretch: 85%; letter-spacing: -.01em; }
+  .sec-head p { color: var(--muted); margin-top: 4px; }
+
+  .areas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+  .area { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 4 / 5; padding: 16px;
+          border: 0; border-radius: var(--radius); overflow: hidden; color: #fff; text-align: left; background: var(--teal); box-shadow: var(--shadow-sm); }
+  .area img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--ease); }
+  .area::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(14 42 39 / .9), rgb(14 42 39 / .05) 60%); transition: background .3s; }
+  .area:hover img, .area:focus-visible img { transform: scale(1.07); }
+  .area b { font-size: 19px; font-weight: 800; font-stretch: 88%; line-height: 1.1; }
+  .area small { font-size: 13px; color: rgb(255 255 255 / .8); margin-top: 4px; }
+  .area[aria-pressed="true"] { outline: 3px solid var(--brick); outline-offset: 3px; }
+
+  /* ---------- Listings ---------- */
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .toolbar label { font-size: 13.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .toolbar select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 10px; font-size: 14px; font-weight: 600; }
+  .switch { cursor: pointer; user-select: none; }
+  .switch input { appearance: none; width: 34px; height: 20px; border-radius: 999px; background: var(--line); position: relative; transition: background .2s; margin: 0; cursor: pointer; }
+  .switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform .25s var(--ease); }
+  .switch input:checked { background: var(--teal); }
+  .switch input:checked::after { transform: translateX(14px); }
+  .active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 18px; min-height: 0; }
+  .af { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--brick-tint); color: var(--brick-deep); font-size: 13px; font-weight: 600; border: 0; }
+  .af svg { width: 16px; height: 16px; padding: 2px; border-radius: 50%; background: rgb(255 255 255 / .6); }
+  .af.clear { background: none; text-decoration: underline; text-underline-offset: 3px; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(282px, 1fr)); gap: 22px; }
+  .card { position: relative; display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); overflow: hidden;
+          box-shadow: var(--shadow-sm); transition: transform .35s var(--ease), box-shadow .35s var(--ease); }
+  .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+  .card.enter { animation: rise .6s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  .media { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; background: var(--line); }
+  .media-link { position: absolute; inset: 0; padding: 0; border: 0; background: none; display: block; width: 100%; }
+  .media-link:focus-visible { outline-offset: -4px; }
+  .media .badges, .media .ref, .media .photos, .media .stamp { pointer-events: none; }
+  .media img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--ease), filter .3s; }
+  .media-actions { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; gap: 6px; }
+  .fav, .cmp { width: 34px; height: 34px; border-radius: 50%; border: 0; display: grid; place-items: center; background: rgb(255 255 255 / .92);
+               color: var(--ink); box-shadow: var(--shadow-sm); transition: transform .25s var(--ease), background .2s, color .2s; }
+  .fav:hover, .cmp:hover { transform: scale(1.1); }
+  .fav svg, .cmp svg { width: 17px; height: 17px; }
+  .fav[aria-pressed="true"] { color: #fff; background: var(--brick); }
+  .fav[aria-pressed="true"] svg { fill: currentColor; }
+  .fav.burst { animation: burst .45s var(--ease); }
+  @keyframes burst { 40% { transform: scale(1.35); } }
+  .cmp[aria-pressed="true"] { color: #fff; background: var(--teal); }
+  .media .stamp { right: auto; top: 46%; left: 50%; translate: -50% -50%; }
+
+  /* Compare tray */
+  .tray { position: fixed; left: 50%; bottom: 20px; z-index: 44; display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px;
+          background: var(--teal-deep); color: #fff; border-radius: 18px; box-shadow: var(--shadow-lg); translate: -50% 0;
+          transition: transform .45s var(--ease), opacity .3s; max-width: calc(100vw - 32px); }
+  .tray[hidden] { display: flex; transform: translateY(140%); opacity: 0; pointer-events: none; }
+  .tray-label { font-size: 13px; color: var(--teal-soft); white-space: nowrap; }
+  .tray-label b { color: #fff; font-size: 15px; display: block; }
+  .tray-items { display: flex; gap: 8px; }
+  .tray-item { position: relative; width: 56px; height: 42px; border-radius: 8px; overflow: hidden; border: 2px solid rgb(255 255 255 / .25); padding: 0; background: var(--teal); animation: rise .35s var(--ease); }
+  .tray-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tray-item span { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .55); font-size: 11px; font-weight: 800; opacity: 0; transition: opacity .15s; }
+  .tray-item:hover span, .tray-item:focus-visible span { opacity: 1; }
+  .tray-slot { width: 56px; height: 42px; border-radius: 8px; border: 2px dashed rgb(255 255 255 / .25); }
+  .tray .btn.ghost { background: transparent; color: #fff; border-color: rgb(255 255 255 / .3); }
+  .has-tray .fab { bottom: 100px; }
+
+  /* Compare dialog */
+  dialog.compare { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: 20px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lg); }
+  dialog.compare[open] { display: flex; flex-direction: column; animation: zoom .4s var(--ease); }
+  dialog.compare::backdrop { background: rgb(14 42 39 / .6); backdrop-filter: blur(4px); }
+  .cmp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+  .cmp-head h2 { font-size: 24px; font-weight: 800; font-stretch: 88%; }
+  .cmp-body { overflow: auto; padding: 0 22px; }
+  table.cmp-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .cmp-table th, .cmp-table td { padding: 10px 12px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; background: none; white-space: normal; }
+  .cmp-table tr:first-child td, .cmp-table tr:first-child th { border-top: 0; }
+  .cmp-table th { width: 150px; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .cmp-table td.best { color: var(--ok); font-weight: 800; }
+  .cmp-table td.best::after { content: " ✓"; }
+  .cmp-photo { display: block; padding: 0; border: 0; background: none; text-align: left; width: 100%; }
+  .cmp-photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; display: block; margin-bottom: 8px; }
+  .cmp-photo b { display: block; font-size: 15px; line-height: 1.25; }
+  .cmp-photo small { color: var(--muted); }
+  .yes { color: var(--ok); font-weight: 700; } .no { color: var(--line); }
+  .cmp-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 22px 18px; border-top: 1px solid var(--line); }
+  .cmp-foot p { font-size: 13px; color: var(--muted); max-width: 52ch; }
+
+  /* Tool steps in chat */
+  .steps { margin: 0 0 0 38px; padding: 10px 12px; list-style: none; border-left: 2px solid var(--line); display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  .steps li { display: flex; align-items: center; gap: 8px; animation: rise .35s var(--ease) both; }
+  .steps .k { font-size: 10px; font-weight: 800; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--teal); color: #fff; flex: none; }
+  .steps .k.rag { background: var(--ok); } .steps .k.mem { background: var(--gold); color: var(--gold-ink); }
+  .steps .k.ok { background: var(--brick); } .steps .k.err { background: var(--danger); }
+  .steps li.now::after { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--brick); border-right-color: transparent; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .steps summary { cursor: pointer; font-weight: 600; color: var(--ink); list-style: none; }
+  .steps summary::-webkit-details-marker { display: none; }
+
+  /* Mortgage calculator */
+  .calc { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+  .calc h3 { font-size: 15px; font-weight: 800; display: flex; justify-content: space-between; align-items: baseline; }
+  .calc h3 small { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .calc label { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; color: var(--muted); }
+  .calc label output { font-weight: 800; color: var(--ink); }
+  .calc input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--brick); margin: 0; }
+  .calc-out { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--brick-tint); }
+  .calc-out b { font-size: 24px; font-weight: 800; font-stretch: 88%; color: var(--brick-deep); }
+  .calc-out span { font-size: 12.5px; color: var(--brick-deep); }
+  .photo-credit { position: absolute; left: 12px; top: 12px; max-width: 70%; color: rgb(255 255 255 / .9); font-size: 11px; background: rgb(0 0 0 / .55); padding: 3px 8px; border-radius: 6px; text-align: left; }
+  .photo-credit a { color: #fff; }
+  .shortlist-link { display: inline-flex; align-items: center; gap: 6px; }
+  .shortlist-link b { min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--brick); color: #fff; font-size: 11.5px; }
+  .card:hover .media img { transform: scale(1.06); }
+  .media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgb(0 0 0 / .45), transparent 40%); pointer-events: none; }
+  .badges { position: absolute; left: 12px; top: 12px; z-index: 2; display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgb(255 255 255 / .94); color: var(--ink); }
+  .badge.pick { background: var(--brick); color: #fff; }
+  .badge.offer { background: var(--gold); color: var(--gold-ink); }
+  .badge.type { background: rgb(14 42 39 / .75); color: #fff; backdrop-filter: blur(4px); }
+  .photos { position: absolute; right: 12px; bottom: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; color: #fff; font-size: 12.5px; font-weight: 700; }
+  .ref { position: absolute; left: 12px; bottom: 10px; z-index: 2; color: rgb(255 255 255 / .9); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+  .card.gone .media img { filter: grayscale(.85) brightness(.9); }
+  .card.pick { box-shadow: 0 0 0 2px var(--brick), var(--shadow-md); }
+  .stamp { position: absolute; right: 14px; top: 16px; z-index: 3; padding: 2px 10px; border: 3px solid currentColor; border-radius: 6px;
+           font-size: 22px; line-height: 1.1; font-weight: 900; font-stretch: 72%; letter-spacing: .03em; color: var(--danger); background: rgb(255 255 255 / .95);
+           transform: rotate(-7deg); pointer-events: none; }
+  .stamp.fresh { animation: thud .46s var(--ease) both; }
+  @keyframes thud { from { transform: rotate(-16deg) scale(2.3); opacity: 0; filter: blur(5px); } to { transform: rotate(-7deg) scale(1); opacity: 1; filter: blur(0); } }
+  .body { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .price { font-size: 22px; font-weight: 800; font-stretch: 88%; letter-spacing: -.01em; }
+  .price small { font-size: 13px; font-weight: 600; color: var(--muted); font-stretch: 100%; margin-left: 4px; }
+  .card h3 { font-size: 15.5px; font-weight: 600; line-height: 1.3; }
+  .card h3 button { padding: 0; border: 0; background: none; text-align: left; }
+  .card h3 button:hover { color: var(--brick); }
+  .loc { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13.5px; }
+  .specs { display: flex; gap: 14px; list-style: none; margin: 8px 0 0; padding: 10px 0 0; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--ink); flex-wrap: wrap; }
+  .specs li { display: inline-flex; align-items: center; gap: 6px; }
+  .specs svg { color: var(--muted); font-size: 16px; }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px 14px; }
+  .commute { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); }
+  .foot-actions { display: flex; align-items: center; gap: 6px; }
+  .demo-status select { appearance: none; border: 1px dashed var(--line); background: var(--bg); border-radius: 6px; padding: 4px 8px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .demo-status select:hover { border-color: var(--muted); }
+  .ask { border: 0; background: var(--brick-tint); color: var(--brick-deep); padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; transition: background .15s; }
+  .ask:hover:not(:disabled) { background: #f2d6cb; }
+  .no-results { grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: var(--surface); border-radius: var(--radius); border: 1px dashed var(--line); }
+  .no-results h3 { font-size: 20px; margin-bottom: 6px; }
+  .no-results p { color: var(--muted); margin-bottom: 14px; }
+
+  /* ---------- Advisor band ---------- */
+  .band { margin: 64px 0 0; background: var(--teal); color: #fff; border-radius: 22px; padding: 40px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: center; position: relative; overflow: hidden; }
+  .band::after { content: ""; position: absolute; right: -80px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgb(226 164 58 / .35), transparent 70%); }
+  .band h2 { font-size: clamp(26px, 2.6vw, 36px); line-height: 1.1; font-weight: 800; font-stretch: 85%; }
+  .band p { color: rgb(255 255 255 / .78); margin: 10px 0 20px; max-width: 48ch; }
+  .band ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; position: relative; z-index: 1; }
+  .band li { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: rgb(255 255 255 / .07); font-size: 14.5px; }
+  .band li svg { color: var(--gold); margin-top: 3px; }
+
+  footer.site { margin-top: 64px; padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  footer.site .wrap { display: flex; gap: 20px; justify-content: space-between; flex-wrap: wrap; }
+  footer.site a { color: var(--ink); }
+
+  /* ---------- Advisor drawer ---------- */
+  .fab { position: fixed; right: 24px; bottom: 24px; z-index: 45; display: inline-flex; align-items: center; gap: 10px; padding: 14px 20px 14px 16px; border: 0; border-radius: 999px;
+         background: var(--brick); color: #fff; font-weight: 700; font-size: 15px; box-shadow: 0 12px 32px rgb(180 71 44 / .4); transition: transform .3s var(--ease), opacity .2s; }
+  .fab:hover { transform: translateY(-2px); }
+  .fab svg { font-size: 20px; }
+  .fab .ping { position: absolute; right: 6px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); border: 2px solid var(--brick); display: none; }
+  .fab.unread .ping { display: block; animation: ping 1.4s ease-out infinite; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 rgb(226 164 58 / .7); } 100% { box-shadow: 0 0 0 10px rgb(226 164 58 / 0); } }
+  .drawer-open .fab { opacity: 0; pointer-events: none; transform: scale(.8); }
+
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 70; width: min(460px, 100vw); display: flex; flex-direction: column; background: var(--surface);
+            box-shadow: -20px 0 60px rgb(14 42 39 / .18); transform: translateX(104%); visibility: hidden; transition: transform .45s var(--ease), visibility 0s .45s; }
+  .drawer-open .drawer { transform: none; visibility: visible; transition: transform .45s var(--ease), visibility 0s; }
+  .d-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .avatar { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--brick); color: #fff; flex: none; }
+  .avatar svg { width: 24px; height: 24px; }
+  .d-head h2 { font-size: 17px; font-weight: 800; }
+  .d-head p { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .live.off { background: var(--gold); }
+  .d-actions { margin-left: auto; display: flex; gap: 6px; }
+  #log { flex: 1; min-height: 0; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; background: linear-gradient(var(--bg), var(--surface) 140px); }
+  #log > * { animation: rise .4s var(--ease) both; }
+  .hello h3 { font-size: 22px; line-height: 1.15; font-weight: 800; font-stretch: 88%; margin-bottom: 6px; }
+  .hello p { color: var(--muted); font-size: 14.5px; margin-bottom: 14px; }
+  .script { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .script button { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; transition: border-color .15s, transform .2s var(--ease); }
+  .script button:hover:not(:disabled) { border-color: var(--brick); transform: translateX(3px); }
+  .script b { font-size: 11.5px; font-weight: 800; color: var(--brick); text-transform: uppercase; letter-spacing: .05em; }
+  .script span { font-size: 14px; }
+  .buyer { align-self: flex-end; max-width: 85%; background: var(--teal); color: #fff; padding: 10px 14px; border-radius: 16px 16px 4px 16px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14.5px; }
+  .advisor { display: grid; grid-template-columns: 28px 1fr; gap: 10px; font-size: 14.5px; overflow-wrap: anywhere; }
+  .advisor .avatar { width: 28px; height: 28px; border-radius: 8px; }
+  .advisor .avatar svg { width: 16px; height: 16px; }
+  .advisor .txt { min-width: 0; }
+  .advisor p { margin-bottom: 8px; }
+  .advisor ul { margin: 0 0 8px; padding-left: 18px; }
+  .advisor li { margin-bottom: 3px; }
+  .advisor .txt > :last-child { margin-bottom: 0; }
+  .scroll { overflow-x: auto; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; font-size: 13px; width: 100%; }
+  th { text-align: left; background: var(--bg); padding: 6px 10px; font-weight: 700; white-space: nowrap; }
+  td { border-top: 1px solid var(--line); padding: 6px 10px; vertical-align: top; }
+  button.home-ref { padding: 0 4px; border: 0; border-radius: 4px; background: var(--brick-tint); color: var(--brick-deep); font-weight: 700; white-space: nowrap; font-size: .95em; }
+  button.home-ref:hover { background: #f2d6cb; }
+  .cite { font-size: 11.5px; font-weight: 700; color: var(--ok); white-space: nowrap; padding: 0 5px; border-radius: 4px; background: #e3f3ea; }
+  .strip { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px 38px; scrollbar-width: thin; }
+  .mini { flex: 0 0 180px; display: flex; flex-direction: column; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); text-align: left; transition: border-color .15s, transform .2s var(--ease); }
+  .mini:hover { border-color: var(--brick); transform: translateY(-2px); }
+  .mini img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+  .mini span { padding: 8px 10px 0; font-size: 12.5px; color: var(--muted); }
+  .mini b { padding: 0 10px 10px; font-size: 15px; font-weight: 800; font-stretch: 90%; }
+  .mini.gone img { filter: grayscale(.9); }
+  .working { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13.5px; padding-left: 38px; }
+  .dots { display: inline-flex; gap: 4px; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--brick); animation: blink 1.2s infinite both; }
+  .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+  .error { color: var(--danger); font-weight: 600; font-size: 14px; }
+  .notice { background: var(--gold-tint); color: var(--gold-ink); padding: 12px 14px; border-radius: 12px; font-size: 13.5px; }
+  .notice code { background: rgb(0 0 0 / .07); padding: 0 3px; border-radius: 3px; }
+  .approval { border: 1px solid var(--gold); border-radius: 14px; padding: 14px; background: var(--gold-tint); }
+  .approval h3 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .approval-grid { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: start; font-size: 14px; }
+  .approval-grid img { width: 96px; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; }
+  .approval .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; font-size: 13.5px; }
+  .picks-link { margin-left: 38px; align-self: flex-start; border: 0; background: none; color: var(--brick); font-weight: 700; font-size: 13px; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+  form.composer { padding: 12px 14px 14px; border-top: 1px solid var(--line); }
+  .compose { display: flex; align-items: flex-end; gap: 8px; padding: 6px 6px 6px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); transition: border-color .15s, box-shadow .15s; }
+  .compose:focus-within { border-color: var(--brick); box-shadow: 0 0 0 3px var(--brick-tint); }
+  textarea { flex: 1; min-width: 0; height: 44px; resize: none; padding: 11px 0; border: 0; background: none; font-size: 15px; line-height: 22px; overflow: hidden; }
+  textarea:focus { outline: none; }
+  textarea::placeholder { color: var(--muted); }
+  .send { width: 40px; height: 40px; padding: 0; border-radius: 12px; }
+  .compose-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-align: center; }
+
+  /* ---------- Home sheet ---------- */
+  dialog.home { width: min(1120px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: 20px; background: var(--surface); color: var(--ink); overflow: hidden; box-shadow: var(--shadow-lg); }
+  dialog.home[open] { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(330px, 1fr); animation: zoom .4s var(--ease); }
+  dialog.home::backdrop { background: rgb(14 42 39 / .6); backdrop-filter: blur(4px); animation: fade .3s; }
+  @keyframes zoom { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+  @keyframes fade { from { opacity: 0; } }
+  .gallery { position: relative; background: var(--teal-deep); display: flex; flex-direction: column; min-height: 0; }
+  .stage { position: relative; flex: 1; min-height: 0; aspect-ratio: 3 / 2; overflow: hidden; }
+  .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .35s; }
+  .stage img.out { opacity: 0; }
+  .stage .stamp { top: 22px; right: 22px; font-size: 32px; }
+  .nav { position: absolute; top: 50%; translate: 0 -50%; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgb(255 255 255 / .92); color: var(--ink); display: grid; place-items: center; box-shadow: var(--shadow-md); font-size: 20px; transition: transform .2s var(--ease); }
+  .nav:hover { transform: scale(1.08); }
+  .nav.prev { left: 14px; } .nav.next { right: 14px; }
+  .counter { position: absolute; left: 14px; bottom: 12px; color: #fff; font-size: 12.5px; font-weight: 700; background: rgb(0 0 0 / .55); padding: 3px 10px; border-radius: 999px; }
+  .thumbs { display: flex; gap: 8px; padding: 10px; overflow-x: auto; }
+  .thumbs button { flex: 0 0 88px; aspect-ratio: 3 / 2; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: none; opacity: .55; transition: opacity .2s; }
+  .thumbs button[aria-current="true"] { border-color: var(--gold); opacity: 1; }
+  .thumbs button:hover { opacity: 1; }
+  .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sheet { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .sheet-kicker { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sheet-kicker .badge { background: var(--bg); }
+  .sheet-kicker .badge.ok { background: #e3f3ea; color: var(--ok); }
+  .sheet-kicker .badge.offer { background: var(--gold-tint); color: var(--gold-ink); }
+  .sheet-kicker .badge.sold { background: #fbe3e0; color: var(--danger); }
+  .sheet h2 { font-size: 28px; line-height: 1.1; font-weight: 800; font-stretch: 85%; text-wrap: balance; }
+  .sheet-area { color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 5px; }
+  .sheet-price b { display: block; font-size: 34px; font-weight: 800; font-stretch: 85%; line-height: 1; color: var(--brick); }
+  .sheet-price span { color: var(--muted); font-size: 13.5px; }
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+  .facts div { padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+  .facts dt { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .facts dd { margin: 2px 0 0; font-size: 18px; font-weight: 800; font-stretch: 88%; }
+  .features { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+  .features li { font-size: 13px; font-weight: 600; padding: 5px 11px; background: var(--brick-tint); color: var(--brick-deep); border-radius: 999px; }
+  .sheet-desc { line-height: 1.6; color: #3b3f45; }
+  .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .sheet-note { font-size: 12px; color: var(--muted); }
+
+
+  /* ---------- Dee, the live mascot ---------- */
+  .mascot { display: block; overflow: visible; }
+  .mascot .m-body { transform-box: view-box; transform-origin: 50% 90%; }
+  .mascot.alive .m-body { animation: bob 3.2s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-3px) rotate(-1.5deg); } }
+  .mascot .m-eyes { transform-box: fill-box; transform-origin: center; transition: transform .08s; }
+  .mascot.blink .m-eyes { transform: scaleY(.08); }
+  .mascot .m-pupil { transition: transform .12s ease-out; }
+  .mascot .m-happy, .mascot .m-glasses, .mascot .m-dots, .mascot .m-heart, .mascot .m-smoke, .mascot .m-o, .mascot .m-sad { opacity: 0; transition: opacity .2s; }
+  .mascot .m-hand { transform-box: fill-box; transform-origin: 20% 90%; transition: transform .3s var(--ease); }
+  .mascot.wave .m-hand, .fab:hover .mascot .m-hand, .fab:focus-visible .mascot .m-hand { animation: wave .9s ease-in-out 2; }
+  @keyframes wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-28deg); } 75% { transform: rotate(18deg); } }
+  /* thinking: eyes up, dots */
+  .mascot.think .m-dots { opacity: 1; }
+  .mascot.think .m-dots circle { animation: blink 1.2s infinite both; }
+  .mascot.think .m-dots circle:nth-child(2) { animation-delay: .15s; } .mascot.think .m-dots circle:nth-child(3) { animation-delay: .3s; }
+  .mascot.think .m-mouth { opacity: 0; } .mascot.think .m-o { opacity: 1; }
+  /* working: chimney smoke */
+  .mascot.work .m-smoke { opacity: 1; }
+  .mascot.work .m-smoke circle { animation: puff 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .mascot.work .m-smoke circle:nth-child(2) { animation-delay: .45s; } .mascot.work .m-smoke circle:nth-child(3) { animation-delay: .9s; }
+  @keyframes puff { 0% { transform: translate(0, 6px) scale(.4); opacity: 0; } 30% { opacity: .9; } 100% { transform: translate(6px, -14px) scale(1.3); opacity: 0; } }
+  /* reading the guides: glasses */
+  .mascot.read .m-glasses { opacity: 1; }
+  .mascot.read .m-smoke { opacity: 1; }
+  /* happy: closed smiling eyes, hop */
+  .mascot.happy .m-eyes { opacity: 0; } .mascot.happy .m-happy { opacity: 1; }
+  .mascot.happy.alive .m-body { animation: hop .6s var(--ease) 2; }
+  @keyframes hop { 40% { transform: translateY(-9px) scale(1.04, .97); } 70% { transform: translateY(0) scale(.98, 1.03); } }
+  .mascot.sad .m-mouth { opacity: 0; } .mascot.sad .m-sad { opacity: 1; }
+  .mascot.sad .m-body { animation: droop 1.2s ease-in-out 1 both !important; }
+  @keyframes droop { 50% { transform: rotate(-6deg) translateY(2px); } }
+  .mascot.love .m-heart { opacity: 1; animation: float-heart 1.2s var(--ease) both; }
+  .mascot.love .m-eyes { opacity: 0; } .mascot.love .m-happy { opacity: 1; }
+  @keyframes float-heart { from { transform: translateY(8px) scale(.4); } 60% { transform: translateY(-4px) scale(1.1); } to { transform: translateY(-10px) scale(1); opacity: 0; } }
+
+  .fab { padding: 0; background: none; box-shadow: none; gap: 0; align-items: flex-end; }
+  .fab .m-wrap { width: 84px; height: 84px; display: grid; place-items: center; border-radius: 50%; background: var(--surface);
+                 box-shadow: 0 12px 32px rgb(14 42 39 / .22), 0 0 0 4px rgb(180 71 44 / .12); transition: box-shadow .3s; }
+  .fab:hover .m-wrap { box-shadow: 0 16px 40px rgb(14 42 39 / .28), 0 0 0 6px rgb(180 71 44 / .18); }
+  .fab .m-wrap svg { width: 70px; height: 70px; }
+  .fab .ping { right: 4px; top: 4px; border-color: #fff; }
+  .m-bubble { position: absolute; right: 92px; bottom: 30px; width: max-content; max-width: 230px; padding: 10px 14px; border-radius: 16px 16px 4px 16px;
+              background: var(--ink); color: #fff; font-size: 13.5px; font-weight: 600; line-height: 1.35; text-align: left; box-shadow: var(--shadow-md);
+              transform-origin: bottom right; transition: opacity .25s, transform .35s var(--ease); }
+  .m-bubble[hidden] { display: block; opacity: 0; transform: scale(.85) translateY(6px); pointer-events: none; }
+  .m-label { position: absolute; right: 8px; bottom: -8px; padding: 2px 8px; border-radius: 999px; background: var(--brick); color: #fff; font-size: 11px; font-weight: 800; white-space: nowrap; }
+  .avatar.dee { background: var(--brick-tint); }
+  .avatar.dee svg { width: 32px !important; height: 32px !important; }
+  .d-head .avatar.dee { width: 46px; height: 46px; border-radius: 14px; }
+  .d-head .avatar.dee svg { width: 40px !important; height: 40px !important; }
+  .advisor .avatar.dee svg { width: 24px !important; height: 24px !important; }
+  .rag-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #e3f3ea; color: var(--ok); font-size: 10.5px; font-weight: 800; letter-spacing: .03em; vertical-align: 2px; }
+  .rag-badge svg { width: 11px; height: 11px; }
+  @media (max-width: 640px) { .m-bubble { max-width: 180px; } .fab .m-wrap { width: 68px; height: 68px; } .fab .m-wrap svg { width: 56px; height: 56px; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    html { scroll-behavior: auto; }
+  }
+  @media (max-width: 1080px) {
+    .areas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .fields { grid-template-columns: 1fr 1fr; }
+    .fields .btn { grid-column: 1 / -1; }
+    nav.links { display: none; }
+    .band { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 860px) {
+    dialog.home[open] { grid-template-columns: 1fr; overflow-y: auto; }
+    .sheet { overflow: visible; }
+    .facts { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .wrap { width: calc(100% - 32px); }
+    .areas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fields { grid-template-columns: 1fr; }
+    .buyer-field span { display: none; }
+    .buyer-field input { width: 84px; }
+    header.site .wrap { gap: 10px; }
+    .brand { font-size: 22px; }
+    .head-right .btn.primary { display: none; }
+    .tabs { overflow-x: auto; scrollbar-width: none; }
+    .tab { white-space: nowrap; }
+    .record { right: 16px; }
+    .hero { padding: 48px 0 110px; }
+    .band { padding: 26px; }
+    .fab span { display: none; }
+    .fab { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mark" viewBox="0 0 100 100"><path fill="currentColor" fill-rule="evenodd" d="M10 8H52C78 8 92 28 92 50S78 92 52 92H10ZM29 53V74H69V53L49 35Z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V7M3 13h18v5M21 18v-3a3 3 0 0 0-3-3H10v1"/><circle cx="7" cy="10.5" r="1.8"/></symbol>
+  <symbol id="i-bath" viewBox="0 0 24 24"><path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM6 12V6a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2"/></symbol>
+  <symbol id="i-area" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-9.2-9.4C1.6 7.2 3.9 4 7.2 4c2 0 3.4 1.1 4.8 2.8C13.4 5.1 14.8 4 16.8 4c3.3 0 5.6 3.2 4.4 6.6C19.5 15.4 12 20 12 20z"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M12 2v20"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></symbol>
+  <symbol id="dee" viewBox="0 0 100 100"><g class="m-static"><ellipse cx="50" cy="92" rx="26" ry="4" fill="rgb(14 42 39 / .12)"/><rect x="66" y="18" width="10" height="18" rx="2" fill="#8f341d"/><path d="M16 46 50 16 84 46" fill="#b4472c" stroke="#b4472c" stroke-width="8" stroke-linejoin="round"/><rect x="20" y="40" width="60" height="48" rx="12" fill="#fff4e6" stroke="#17403c" stroke-width="3"/><circle cx="38" cy="60" r="7.5" fill="#fff" stroke="#17403c" stroke-width="2.5"/><circle cx="62" cy="60" r="7.5" fill="#fff" stroke="#17403c" stroke-width="2.5"/><circle cx="38" cy="61" r="3.6" fill="#1a1d21"/><circle cx="62" cy="61" r="3.6" fill="#1a1d21"/><circle cx="29" cy="71" r="4" fill="#e9967a" opacity=".55"/><circle cx="71" cy="71" r="4" fill="#e9967a" opacity=".55"/><path d="M44 72q6 6 12 0" fill="none" stroke="#17403c" stroke-width="3" stroke-linecap="round"/></g></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+</svg>
+
+<div class="top" id="top">
+  <div class="proofbar" aria-label="Agent components shown so far">
+    <div class="wrap">
+      <span class="pb-title">Agent</span>
+      <div id="proof" style="display:contents"></div>
+      <span class="pb-sep"></span>
+      <button class="pb-count" type="button" data-panel="memory" aria-expanded="false" aria-controls="record">Memory<b id="n-memory">0</b></button>
+      <button class="pb-count" type="button" data-panel="trace" aria-expanded="false" aria-controls="record">Tools<b id="n-trace">0</b></button>
+      <button class="pb-count" type="button" data-panel="sources" aria-expanded="false" aria-controls="record">Sources<b id="n-sources">0</b></button>
+    </div>
+  </div>
+  <div class="record" id="record" hidden>
+    <div id="sec-memory"><h4>Saved buyer memory</h4><div id="memory"></div></div>
+    <div id="sec-trace"><h4>Tools this turn</h4><div id="trace"><div class="empty">No tools called yet.</div></div></div>
+    <div id="sec-sources"><h4>Sources retrieved</h4><div id="sources"><div class="empty">No documents retrieved yet.</div></div></div>
+  </div>
+  <header class="site">
+    <div class="wrap">
+      <a class="brand" href="#"><svg aria-hidden="true"><use href="#i-mark"/></svg>Deedly</a>
+      <nav class="links" aria-label="Sections">
+        <a href="#listings">Buy</a>
+        <a href="#areas">Areas</a>
+        <a href="#advisor">Advisor</a>
+        <a href="#listings" class="shortlist-link" id="nav-saved">Shortlist <b id="n-saved">0</b></a>
+      </nav>
+      <div class="head-right">
+        <label class="buyer-field"><span>Buyer</span>
+          <input id="user" value="demo_buyer" maxlength="64" autocomplete="off" aria-label="Buyer name">
+          <button class="icon-btn" id="reset" type="button" title="New session. Clears this conversation, saved memory stays." aria-label="Start a new session"><svg class="i"><use href="#i-refresh"/></svg></button>
+        </label>
+        <button class="btn primary sm" type="button" data-open-advisor><svg class="i"><use href="#i-chat"/></svg>Ask Deedly</button>
+      </div>
+    </div>
+  </header>
+</div>
+
+<main>
+  <section class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="wrap">
+      <span class="eyebrow rise"><svg class="i"><use href="#i-spark"/></svg>AI property advisor for Lahore</span>
+      <h1 class="rise d1">Find a home that fits your life in Lahore.</h1>
+      <p class="lede rise d2" id="lede">Search homes across Lahore's neighbourhoods, then ask Deedly to compare them, check the paperwork and book a viewing.</p>
+    </div>
+  </section>
+
+  <div class="wrap search rise d3">
+    <form class="search-card" id="search" role="search">
+      <div class="tabs" role="group" aria-label="Property type">
+        <button class="tab" type="button" data-type="" aria-pressed="true">All homes</button>
+        <button class="tab" type="button" data-type="house" aria-pressed="false">Houses</button>
+        <button class="tab" type="button" data-type="apartment" aria-pressed="false">Apartments</button>
+        <button class="tab" type="button" data-type="townhouse" aria-pressed="false">Townhouses</button>
+      </div>
+      <div class="fields">
+        <label class="field"><span>Location</span><select id="f-area"><option value="">All of Lahore</option></select></label>
+        <label class="field"><span>Max price</span>
+          <select id="f-price">
+            <option value="">Any price</option>
+            <option value="15000000">PKR 1.5 Crore</option>
+            <option value="20000000">PKR 2 Crore</option>
+            <option value="25000000">PKR 2.5 Crore</option>
+            <option value="30000000">PKR 3 Crore</option>
+            <option value="40000000">PKR 4 Crore</option>
+          </select></label>
+        <label class="field"><span>Bedrooms</span>
+          <select id="f-beds"><option value="">Any</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select></label>
+        <label class="field"><span>Keyword</span><input id="f-q" type="search" placeholder="garden, solar, metro"></label>
+        <button class="btn primary" type="submit"><svg class="i"><use href="#i-search"/></svg>Search</button>
+      </div>
+      <div class="quick" id="quick"><span>Popular:</span></div>
+    </form>
+  </div>
+
+  <section class="block" id="areas">
+    <div class="wrap">
+      <div class="sec-head"><div><h2>Browse by area</h2><p>Five Lahore neighbourhoods, from central Gulberg to green Park View City.</p></div></div>
+      <div class="areas" id="area-cards"></div>
+    </div>
+  </section>
+
+  <section class="block" id="listings">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><h2 id="list-title">Homes for sale in Lahore</h2><p id="list-count"></p></div>
+        <div class="toolbar">
+          <label class="switch"><input type="checkbox" id="f-avail">Available only</label>
+          <label>Sort
+            <select id="f-sort">
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="ppsf">Best value per sq ft</option>
+              <option value="newest">Newest built</option>
+              <option value="commute">Shortest commute</option>
+            </select></label>
+        </div>
+      </div>
+      <div class="active-filters" id="active"></div>
+      <div class="grid" id="homes" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="wrap" id="advisor">
+    <div class="band">
+      <div style="position:relative;z-index:1">
+        <h2>Not sure which one? Ask Deedly.</h2>
+        <p>Tell it your budget and must-haves once. It searches the listings, compares homes side by side, cites the buying guides it reads, and never sends a viewing request without your approval.</p>
+        <button class="btn primary" type="button" data-open-advisor><svg class="i"><use href="#i-chat"/></svg>Start a conversation</button>
+      </div>
+      <ul>
+        <li><svg class="i"><use href="#i-check"/></svg>Remembers your budget and preferred areas between visits</li>
+        <li><svg class="i"><use href="#i-check"/></svg>Compares homes on price per square foot, commute and features</li>
+        <li><svg class="i"><use href="#i-check"/></svg>Answers deposit, title and inspection questions with sources</li>
+        <li><svg class="i"><use href="#i-check"/></svg>Re-checks a home when its status changes</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>Deedly, a university project. Areas are real parts of Lahore, but every listing, price and document is synthetic. Viewing requests are simulated. Photos are illustrative stock images from Unsplash. General information, not legal or financial advice.</span>
+    <a href="/static/brand/board.html" target="_blank" rel="noopener">Brand kit</a>
+  </div>
+</footer>
+
+<button class="fab" id="fab" type="button" data-open-advisor aria-controls="drawer" aria-label="Ask Dee, the Deedly advisor"><span class="m-bubble" id="m-bubble" hidden aria-live="polite"></span><span class="m-wrap"><svg class="mascot alive" viewBox="0 0 100 100" aria-hidden="true"><use href="#dee"/></svg></span><span class="m-label">Ask Dee</span><i class="ping"></i></button>
+
+<div class="tray" id="tray" hidden role="region" aria-label="Compare tray">
+  <div class="tray-label"><b id="tray-count">0 selected</b>Pick 2 or 3 homes</div>
+  <div class="tray-items" id="tray-items"></div>
+  <button class="btn ghost sm" type="button" id="tray-clear">Clear</button>
+  <button class="btn primary sm" type="button" id="tray-go"><svg class="i"><use href="#i-compare"/></svg>Compare</button>
+</div>
+
+<dialog class="compare" id="compare" aria-labelledby="cmp-title">
+  <div class="cmp-head"><h2 id="cmp-title">Compare homes</h2>
+    <button class="icon-btn" type="button" id="cmp-close" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="cmp-body"><table class="cmp-table" id="cmp-table"></table></div>
+  <div class="cmp-foot">
+    <p>Green ticks mark the best value in each row. Deedly ranks homes by how many of your saved criteria they meet, then by price per square foot.</p>
+    <button class="btn primary" type="button" id="cmp-ask"><svg class="i"><use href="#i-chat"/></svg>Ask Deedly which is best</button>
+  </div>
+</dialog>
+
+<aside class="drawer" id="drawer" aria-label="Deedly advisor" aria-hidden="true">
+  <div class="d-head">
+    <div class="avatar dee"><svg class="mascot alive" viewBox="0 0 100 100" aria-hidden="true"><use href="#dee"/></svg></div>
+    <div><h2>Dee, your advisor<span class="rag-badge" title="Answers cite retrieved documents (RAG)"><svg class="i"><use href="#i-doc"/></svg>RAG</span></h2><p><i class="live" id="live"></i><span id="session-note">New session</span></p></div>
+    <div class="d-actions">
+      <button class="icon-btn" type="button" id="reset2" title="New session" aria-label="Start a new session"><svg class="i"><use href="#i-refresh"/></svg></button>
+      <button class="icon-btn" type="button" id="close-drawer" aria-label="Close advisor"><svg class="i"><use href="#i-x"/></svg></button>
+    </div>
+  </div>
+  <div id="log" aria-live="polite"></div>
+  <form class="composer" id="form">
+    <div class="compose">
+      <textarea id="text" maxlength="4000" aria-label="Your message" placeholder="Ask about homes, areas or buying"></textarea>
+      <button class="btn primary send" id="send" aria-label="Send"><svg class="i"><use href="#i-send"/></svg></button>
+    </div>
+    <div class="compose-note">Synthetic listings. General information, not legal or financial advice.</div>
+  </form>
+</aside>
+
+<dialog class="home" id="home" aria-labelledby="home-title">
+  <div class="gallery">
+    <div class="stage" id="stage">
+      <img id="stage-img" alt="">
+      <button class="nav prev" id="prev" type="button" aria-label="Previous photo"><svg class="i"><use href="#i-left"/></svg></button>
+      <button class="nav next" id="next" type="button" aria-label="Next photo"><svg class="i"><use href="#i-right"/></svg></button>
+      <div class="counter" id="counter" aria-live="polite"></div>
+      <div class="photo-credit" id="photo-credit" hidden></div>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+  <div class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-kicker" id="home-kicker"></div>
+      <button class="icon-btn" id="home-close" type="button" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button>
+    </div>
+    <div>
+      <h2 id="home-title"></h2>
+      <div class="sheet-area" id="home-area"></div>
+    </div>
+    <div class="sheet-price" id="home-price"></div>
+    <dl class="facts" id="home-facts"></dl>
+    <ul class="features" id="home-features" aria-label="Features"></ul>
+    <p class="sheet-desc" id="home-desc"></p>
+    <div class="calc" id="calc">
+      <h3>Monthly payment <small>Illustrative, confirm with a lender</small></h3>
+      <label>Down payment <output id="c-down-o"></output><input type="range" id="c-down" min="10" max="80" step="5" value="25"></label>
+      <label>Interest rate <output id="c-rate-o"></output><input type="range" id="c-rate" min="8" max="24" step="0.5" value="14"></label>
+      <label>Term <output id="c-years-o"></output><input type="range" id="c-years" min="5" max="25" step="1" value="20"></label>
+      <div class="calc-out"><b id="c-pay"></b><span id="c-loan"></span></div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn primary" id="home-ask" type="button"><svg class="i"><use href="#i-chat"/></svg>Ask Deedly about this home</button>
+      <button class="btn ghost" id="home-view" type="button">Request a viewing</button>
+    </div>
+    <p class="sheet-note">Photos are illustrative, not the listed home. Lahore photos come from Wikimedia Commons with the credit shown on the photo. The listing, price and details are synthetic. Calculator defaults follow the financing guide: 25 percent down, 14 percent, 20 years.</p>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const user = () => $("user").value.trim() || "demo_buyer";
+const STATUS_WORDS = {available: "Available", under_offer: "Under offer", sold: "Sold"};
+const SCRIPT = [
+  ["Find homes", "My budget is 2.7 crore PKR. I need at least 3 bedrooms, parking, and a commute under 20 minutes. What fits?"],
+  ["Short-term memory", "Which of those is cheaper per square foot?"],
+  ["Compare", "Compare P-103 and P-110, recommend one, and estimate the monthly payment using your planning assumptions."],
+  ["RAG with sources", "How much deposit should I pay, and what should a lawyer check?"],
+  ["Viewing approval", "Request a viewing of P-110 on 2026-11-20 under the name Hamza."],
+];
+const icon = (name, cls = "i") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+
+
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+
+/* ---------- Dee, the live mascot ---------- */
+const DEE_SVG = `
+  <ellipse cx="50" cy="93" rx="26" ry="4" fill="rgb(14 42 39 / .12)"/>
+  <g class="m-body">
+    <g class="m-smoke" fill="#cfd8d6"><circle cx="71" cy="12" r="4"/><circle cx="73" cy="10" r="3.5"/><circle cx="70" cy="11" r="3"/></g>
+    <rect x="66" y="18" width="10" height="18" rx="2" fill="#8f341d"/>
+    <path d="M16 46 50 16 84 46" fill="#b4472c" stroke="#b4472c" stroke-width="8" stroke-linejoin="round"/>
+    <path class="m-hand" d="M80 66c6-2 10-7 9-11" fill="none" stroke="#17403c" stroke-width="3.5" stroke-linecap="round"/>
+    <circle class="m-hand" cx="89" cy="54" r="4" fill="#fff4e6" stroke="#17403c" stroke-width="2.5"/>
+    <rect x="20" y="40" width="60" height="48" rx="12" fill="#fff4e6" stroke="#17403c" stroke-width="3"/>
+    <rect x="44" y="76" width="12" height="12" rx="3" fill="#e2a43a" opacity=".55"/>
+    <g class="m-eyes">
+      <circle cx="38" cy="60" r="7.5" fill="#fff" stroke="#17403c" stroke-width="2.5"/>
+      <circle cx="62" cy="60" r="7.5" fill="#fff" stroke="#17403c" stroke-width="2.5"/>
+      <circle class="m-pupil" cx="38" cy="60" r="3.6" fill="#1a1d21"/>
+      <circle class="m-pupil" cx="62" cy="60" r="3.6" fill="#1a1d21"/>
+      <circle class="m-pupil" cx="39.2" cy="58.6" r="1.1" fill="#fff"/>
+      <circle class="m-pupil" cx="63.2" cy="58.6" r="1.1" fill="#fff"/>
+    </g>
+    <g class="m-happy" fill="none" stroke="#17403c" stroke-width="3" stroke-linecap="round"><path d="M32 61q6-7 12 0"/><path d="M56 61q6-7 12 0"/></g>
+    <g class="m-glasses" fill="none" stroke="#17403c" stroke-width="2.5"><circle cx="38" cy="60" r="10"/><circle cx="62" cy="60" r="10"/><path d="M48 59h4M28 58l-6-3M72 58l6-3"/></g>
+    <circle cx="29" cy="71" r="4" fill="#e9967a" opacity=".55"/><circle cx="71" cy="71" r="4" fill="#e9967a" opacity=".55"/>
+    <path class="m-mouth" d="M44 71q6 6 12 0" fill="none" stroke="#17403c" stroke-width="3" stroke-linecap="round"/>
+    <ellipse class="m-o" cx="50" cy="72" rx="3" ry="3.5" fill="#17403c"/>
+    <path class="m-sad" d="M44 74q6-5 12 0" fill="none" stroke="#17403c" stroke-width="3" stroke-linecap="round"/>
+    <g class="m-dots" fill="#17403c"><circle cx="84" cy="22" r="2.6"/><circle cx="91" cy="15" r="2.6"/><circle cx="97" cy="8" r="2.6"/></g>
+    <path class="m-heart" d="M50 14s-8-5-8-10a4.2 4.2 0 0 1 8-1.8A4.2 4.2 0 0 1 58 4c0 5-8 10-8 10z" fill="#b4472c"/>
+  </g>`;
+
+const mascot = (() => {
+  const live = () => [...document.querySelectorAll("svg.mascot.alive")];
+  const states = ["think", "work", "read", "happy", "sad", "love", "wave"];
+  let resetTimer = null, bubbleTimer = null, tipsShown = 0;
+  live().forEach(svg => { svg.innerHTML = DEE_SVG; });
+  document.querySelectorAll("svg.mascot:not(.alive)").forEach(svg => { svg.innerHTML = DEE_SVG; });
+
+  function set(state, ms) {
+    live().forEach(svg => { states.forEach(s => svg.classList.remove(s)); if (state) svg.classList.add(state); });
+    clearTimeout(resetTimer);
+    if (ms) resetTimer = setTimeout(() => set(null), ms);
+  }
+  function react(kind) {
+    const timed = {happy: 2600, sad: 2600, love: 1300, wave: 1900};
+    set(kind, timed[kind] || 0);
+  }
+  function say(text, ms = 4200) {
+    const b = $("m-bubble");
+    if (!b || document.body.classList.contains("drawer-open")) return;
+    b.textContent = text;
+    b.hidden = false;
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => { b.hidden = true; }, ms);
+  }
+  // Eyes follow the pointer.
+  let raf = 0, px = innerWidth / 2, py = innerHeight / 2;
+  function look() {
+    raf = 0;
+    live().forEach(svg => {
+      const r = svg.getBoundingClientRect();
+      if (!r.width) return;
+      const dx = px - (r.left + r.width / 2), dy = py - (r.top + r.height * .6);
+      const d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 260) * 2.8;
+      svg.querySelectorAll(".m-pupil").forEach(c => { c.style.transform = `translate(${(dx / d) * k}px, ${(dy / d) * k}px)`; });
+    });
+  }
+  if (!reduceMotion.matches) {
+    addEventListener("pointermove", e => { px = e.clientX; py = e.clientY; if (!raf) raf = requestAnimationFrame(look); }, {passive: true});
+    (function blink() {
+      setTimeout(() => {
+        live().forEach(svg => svg.classList.add("blink"));
+        setTimeout(() => { live().forEach(svg => svg.classList.remove("blink")); blink(); }, 130);
+      }, 2200 + Math.random() * 3200);
+    })();
+  }
+  const TIPS = [
+    "Tap the heart on a home to shortlist it. I'll remember it next time.",
+    "Pick 2 or 3 homes with the compare button and I'll line them up.",
+    "Ask me about deposits or title checks. I'll cite my sources.",
+    "Change a home's status on its card and watch me re-plan.",
+    "Open any home to try the monthly payment calculator.",
+  ];
+  setTimeout(() => { react("wave"); say("Hi, I'm Dee! Ask me anything about these homes."); }, 1400);
+  setInterval(() => {
+    if (tipsShown >= TIPS.length || busy || document.hidden) return;
+    say(TIPS[tipsShown++]);
+  }, 26000);
+  return {react, say, set};
+})();
+
+let llmReady = true, busy = false, mentioned = new Set(), freshStamp = null;
+let shortlist = new Set(), compareSet = new Set();
+const MAX_COMPARE = 3;
+let proof, pendingChange = null;
+let allHomes = [], photos = {}, homesById = {};
+const filters = {type: "", area: "", maxPrice: "", minBeds: "", q: "", avail: false, picks: false, saved: false, sort: "price-asc"};
+let animateNext = true;
+
+function freshProof() {
+  return {
+    llm: {on: false, short: "LLM", label: "LLM agent", note: "Waiting for the first answer"},
+    short: {on: false, short: "Short-term", label: "Short-term memory", note: "Needs a follow-up in this session"},
+    long: {on: false, short: "Long-term", label: "Long-term memory", note: "Nothing saved yet"},
+    rag: {on: false, short: "RAG", label: "RAG with sources", note: "No document retrieved yet"},
+    mcp: {on: false, short: "MCP", label: "MCP tool call", note: "No tool called yet"},
+    human: {on: false, short: "Approval", label: "Human approval", note: "No viewing request yet"},
+    replan: {on: false, short: "Re-plan", label: "Re-planning", note: "Change a home's status to test this"},
+  };
+}
+
+const post = (path, body) => fetch(path, {
+  method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body),
+});
+
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = String(s);
+  return d.innerHTML.replace(/"/g, "&quot;");
+}
+
+function inline(s) {
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\[([\w.-]+?\.md#\d+)\]/g, (_, c) => `<span class="cite" title="${c}">${c.replace(/^\d+_/, "").replace(".md", "").replace(/_/g, " ")}</span>`)
+    .replace(/\bP-\d{3}\b/g, '<button type="button" class="home-ref" data-home="$&" title="Open $&">$&</button>');
+}
+
+const firstPhoto = id => (photos[id] || [])[0];
+// Pakistani convention: 1 crore = 10,000,000 and 1 lakh = 100,000.
+const money = n => n >= 1e7 ? `PKR ${+(n / 1e7).toFixed(2)} Crore` : `PKR ${+(n / 1e5).toFixed(1)} Lakh`;
+const label = f => f.replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
+
+/* ---------- Proof bar ---------- */
+function drawProof() {
+  $("proof").innerHTML = Object.values(proof).map(p =>
+    `<button type="button" class="pf${p.on ? " on" : ""}${p.fresh ? " fresh" : ""}" aria-label="${esc(p.label)}: ${p.on ? "shown" : "not yet shown"}. ${esc(p.note)}">` +
+    `<i class="dot"></i>${esc(p.short)}<span class="tip" aria-hidden="true"><b>${esc(p.label)}</b><br>${esc(p.note)}</span></button>`).join("");
+}
+function mark(key, note) {
+  proof[key].fresh = !proof[key].on;
+  proof[key].on = true;
+  proof[key].note = note;
+  drawProof();
+  proof[key].fresh = false;
+}
+function setCount(id, n) { $("n-" + id).textContent = n; }
+
+let openPanel = null;
+document.querySelectorAll(".pb-count").forEach(b => b.onclick = e => {
+  e.stopPropagation();
+  const name = b.dataset.panel;
+  const show = openPanel !== name;
+  openPanel = show ? name : null;
+  $("record").hidden = !show;
+  document.querySelectorAll(".pb-count").forEach(x => x.setAttribute("aria-expanded", String(show && x === b)));
+  if (show) $("sec-" + name).scrollIntoView({block: "nearest"});
+});
+document.addEventListener("click", e => {
+  if (openPanel && !e.target.closest("#record")) {
+    openPanel = null; $("record").hidden = true;
+    document.querySelectorAll(".pb-count").forEach(x => x.setAttribute("aria-expanded", "false"));
+  }
+});
+
+/* ---------- Listings ---------- */
+const AREA_FALLBACK = ["Johar Town", "Allama Iqbal Town", "Park View City", "Gulberg", "Model Town"];
+function areasList() {
+  const found = [...new Set(allHomes.map(h => h.area))];
+  return AREA_FALLBACK.filter(a => found.includes(a)).concat(found.filter(a => !AREA_FALLBACK.includes(a)));
+}
+
+function buildAreaUI() {
+  const areas = areasList();
+  const sel = $("f-area");
+  if (sel.options.length !== areas.length + 1) {
+    sel.innerHTML = '<option value="">All of Lahore</option>' + areas.map(a => `<option>${esc(a)}</option>`).join("");
+  }
+  sel.value = filters.area;
+  $("quick").innerHTML = "<span>Popular:</span>" + areas.map(a =>
+    `<button type="button" class="chip" data-area="${esc(a)}" aria-pressed="${filters.area === a}">${esc(a)}</button>`).join("");
+  $("area-cards").innerHTML = areas.map(a => {
+    const homes = allHomes.filter(h => h.area === a);
+    const avail = homes.filter(h => h.status === "available");
+    const cheapest = Math.min(...(avail.length ? avail : homes).map(h => h.price_pkr));
+    const p = homes.map(h => firstPhoto(h.id)).find(Boolean);
+    return `<button type="button" class="area" data-area="${esc(a)}" aria-pressed="${filters.area === a}">` +
+      (p ? `<img src="${esc(p.thumb)}" alt="" loading="lazy">` : "") +
+      `<b>${esc(a)}</b><small>${homes.length} ${homes.length === 1 ? "home" : "homes"} · from ${money(cheapest)}</small></button>`;
+  }).join("");
+}
+
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-area]");
+  if (!a) return;
+  filters.area = filters.area === a.dataset.area ? "" : a.dataset.area;
+  filters.picks = false;
+  applyFilters(true);
+  if (a.classList.contains("area") || a.classList.contains("chip")) $("listings").scrollIntoView();
+});
+
+function matches(h) {
+  if (filters.type && h.type !== filters.type) return false;
+  if (filters.area && h.area !== filters.area) return false;
+  if (filters.maxPrice && h.price_pkr > +filters.maxPrice) return false;
+  if (filters.minBeds && h.beds < +filters.minBeds) return false;
+  if (filters.avail && h.status !== "available") return false;
+  if (filters.picks && !mentioned.has(h.id)) return false;
+  if (filters.saved && !shortlist.has(h.id)) return false;
+  if (filters.q) {
+    const hay = [h.id, h.title, h.area, h.type, h.description, ...(h.features || [])].join(" ").toLowerCase().replace(/_/g, " ");
+    if (!filters.q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w))) return false;
+  }
+  return true;
+}
+const SORTS = {
+  "price-asc": (a, b) => a.price_pkr - b.price_pkr,
+  "price-desc": (a, b) => b.price_pkr - a.price_pkr,
+  "ppsf": (a, b) => a.price_pkr / a.area_sqft - b.price_pkr / b.area_sqft,
+  "newest": (a, b) => b.year_built - a.year_built,
+  "commute": (a, b) => a.commute_min_to_center - b.commute_min_to_center,
+};
+
+function card(h, i) {
+  const p = firstPhoto(h.id), count = (photos[h.id] || []).length;
+  const gone = h.status !== "available";
+  const stamp = h.status === "sold" ? `<div class="stamp${freshStamp === h.id ? " fresh" : ""}">SOLD</div>` : "";
+  const badges = [`<span class="badge type">${esc(label(h.type))}</span>`];
+  if (h.status === "under_offer") badges.push('<span class="badge offer">Under offer</span>');
+  if (mentioned.has(h.id)) badges.push(`<span class="badge pick">${icon("spark")}Advisor pick</span>`);
+  return `<article class="card${gone ? " gone" : ""}${mentioned.has(h.id) ? " pick" : ""}${animateNext ? " enter" : ""}" style="--i:${i}">
+    <div class="media">
+      <button type="button" class="media-link" data-home="${esc(h.id)}" aria-label="View photos and details of ${esc(h.title)}">
+        ${p ? `<img src="${esc(p.thumb)}" alt="" loading="lazy" width="640" height="480">` : ""}
+      </button>
+      <span class="badges">${badges.join("")}</span>${stamp}
+      <span class="ref">${esc(h.id)}</span>
+      ${count ? `<span class="photos">${icon("cam")}${count}</span>` : ""}
+      <span class="media-actions">
+        <button type="button" class="fav" data-fav="${esc(h.id)}" aria-pressed="${shortlist.has(h.id)}" title="${shortlist.has(h.id) ? "Remove from" : "Save to"} shortlist" aria-label="Save ${esc(h.id)} to shortlist">${icon("heart")}</button>
+        <button type="button" class="cmp" data-cmp="${esc(h.id)}" aria-pressed="${compareSet.has(h.id)}" title="${compareSet.has(h.id) ? "Remove from" : "Add to"} compare" aria-label="Compare ${esc(h.id)}">${icon("compare")}</button>
+      </span>
+    </div>
+    <div class="body">
+      <div class="price">${money(h.price_pkr)}<small>${Math.round(h.price_pkr / h.area_sqft).toLocaleString("en")}/sq ft</small></div>
+      <h3><button type="button" data-home="${esc(h.id)}">${esc(h.title)}</button></h3>
+      <div class="loc">${icon("pin")}${esc(h.area)}, Lahore</div>
+      <ul class="specs">
+        <li>${icon("bed")}${esc(h.beds)} Beds</li>
+        <li>${icon("bath")}${esc(h.baths)} Baths</li>
+        <li>${icon("area")}${h.area_sqft.toLocaleString("en")} sq ft</li>
+      </ul>
+    </div>
+    <div class="foot">
+      <span class="commute">${icon("clock")}${esc(h.commute_min_to_center)} min to centre</span>
+      <span class="foot-actions">
+        <label class="demo-status" title="Demo control: change status to test re-planning"><span class="sr-only">Status of ${esc(h.id)}</span>
+          <select data-status="${esc(h.id)}">${Object.entries(STATUS_WORDS).map(([v, w]) =>
+            `<option value="${v}" ${v === h.status ? "selected" : ""}>${w}</option>`).join("")}</select></label>
+        <button type="button" class="ask" data-ask="${esc(h.id)}" aria-label="Ask Deedly about ${esc(h.id)}">${icon("chat")}Ask</button>
+      </span>
+    </div>
+  </article>`;
+}
+
+function applyFilters(animate = false) {
+  animateNext = animate && !reduceMotion.matches;
+  buildAreaUI();
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-pressed", String(t.dataset.type === filters.type)));
+  $("f-price").value = filters.maxPrice; $("f-beds").value = filters.minBeds; $("f-q").value = filters.q;
+  $("f-avail").checked = filters.avail; $("f-sort").value = filters.sort;
+  const list = allHomes.filter(matches).sort(SORTS[filters.sort]);
+  $("list-title").textContent = filters.picks ? "Homes the advisor named" : filters.saved ? "Your shortlist" : `Homes for sale in ${filters.area || "Lahore"}`;
+  const avail = list.filter(h => h.status === "available").length;
+  $("list-count").textContent = `${list.length} ${list.length === 1 ? "home" : "homes"} found, ${avail} available now`;
+  if (animate && typeof mascot !== "undefined") mascot.say(list.length ? `Found ${list.length} ${list.length === 1 ? "home" : "homes"}${filters.area ? " in " + filters.area : ""}!` : "Nothing matches yet. Try loosening a filter?", 2600);
+  $("homes").innerHTML = list.length ? list.map(card).join("") :
+    filters.saved && !shortlist.size ? `<div class="no-results"><h3>Your shortlist is empty</h3><p>Tap the heart on any home to save it. Saved homes go into long-term memory, so Deedly knows them next session.</p><button class="btn dark" type="button" id="clear-all">Browse all homes</button></div>` :
+    `<div class="no-results"><h3>No homes match these filters</h3><p>Try a higher budget, fewer bedrooms or another area.</p><button class="btn dark" type="button" id="clear-all">Clear all filters</button></div>`;
+  const chips = [];
+  if (filters.picks) chips.push(["picks", "Advisor picks"]);
+  if (filters.saved) chips.push(["saved", "Shortlist"]);
+  if (filters.type) chips.push(["type", label(filters.type) + "s"]);
+  if (filters.area) chips.push(["area", filters.area]);
+  if (filters.maxPrice) chips.push(["maxPrice", "Up to " + money(+filters.maxPrice)]);
+  if (filters.minBeds) chips.push(["minBeds", filters.minBeds + "+ beds"]);
+  if (filters.q) chips.push(["q", `"${filters.q}"`]);
+  if (filters.avail) chips.push(["avail", "Available only"]);
+  $("active").innerHTML = chips.map(([k, t]) => `<button type="button" class="af" data-clear="${k}">${esc(t)}${icon("x")}</button>`).join("") +
+    (chips.length > 1 ? '<button type="button" class="af clear" data-clear="all">Clear all</button>' : "");
+  animateNext = false;
+}
+
+function clearFilter(k) {
+  if (k === "all") Object.assign(filters, {type: "", area: "", maxPrice: "", minBeds: "", q: "", avail: false, picks: false, saved: false});
+  else filters[k] = typeof filters[k] === "boolean" ? false : "";
+  applyFilters(true);
+}
+
+document.addEventListener("click", e => {
+  const c = e.target.closest("[data-clear]");
+  if (c) clearFilter(c.dataset.clear);
+  if (e.target.closest("#clear-all")) clearFilter("all");
+  const t = e.target.closest(".tab");
+  if (t) { filters.type = t.dataset.type; applyFilters(true); }
+  const ask = e.target.closest("[data-ask]");
+  if (ask) askAbout(ask.dataset.ask);
+});
+/* ---------- Shortlist (long-term memory) ---------- */
+async function toggleFav(id, btn) {
+  const on = !shortlist.has(id);
+  on ? shortlist.add(id) : shortlist.delete(id);   // Optimistic, confirmed by the server below.
+  syncFavs();
+  if (on && btn && !reduceMotion.matches) { btn.classList.remove("burst"); void btn.offsetWidth; btn.classList.add("burst"); }
+  if (on) { mascot.react("love"); mascot.say("Saved to your shortlist. I'll remember it.", 2600); }
+  const r = await post("/api/shortlist", {user: user(), id, on});
+  if (r.ok) shortlist = new Set((await r.json()).shortlist);
+  await refresh();
+}
+function syncFavs() {
+  document.querySelectorAll("[data-fav]").forEach(b => {
+    const on = shortlist.has(b.dataset.fav);
+    b.setAttribute("aria-pressed", String(on));
+    b.title = `${on ? "Remove from" : "Save to"} shortlist`;
+  });
+  $("n-saved").textContent = shortlist.size;
+}
+
+/* ---------- Compare tray ---------- */
+function toggleCompare(id) {
+  if (compareSet.has(id)) compareSet.delete(id);
+  else if (compareSet.size < MAX_COMPARE) { compareSet.add(id); mascot.say(compareSet.size === 1 ? "Pick one more to compare." : "Ready! Hit Compare in the tray.", 2400); }
+  else { $("tray-count").textContent = `Maximum ${MAX_COMPARE} homes`; setTimeout(syncCompare, 1400); return; }
+  syncCompare();
+}
+function syncCompare() {
+  document.querySelectorAll("[data-cmp]").forEach(b => {
+    const on = compareSet.has(b.dataset.cmp);
+    b.setAttribute("aria-pressed", String(on));
+    b.title = `${on ? "Remove from" : "Add to"} compare`;
+  });
+  const ids = [...compareSet];
+  $("tray").hidden = !ids.length;
+  document.body.classList.toggle("has-tray", ids.length > 0);
+  $("tray-count").textContent = `${ids.length} selected`;
+  $("tray-items").innerHTML = ids.map(id => {
+    const p = firstPhoto(id);
+    return `<button type="button" class="tray-item" data-uncmp="${esc(id)}" aria-label="Remove ${esc(id)} from compare">${p ? `<img src="${esc(p.thumb)}" alt="">` : ""}<span>${esc(id)} ✕</span></button>`;
+  }).join("") + '<i class="tray-slot"></i>'.repeat(Math.max(0, 2 - ids.length));
+  $("tray-go").disabled = ids.length < 2;
+}
+function openCompare() {
+  const homes = [...compareSet].map(id => homesById[id]).filter(Boolean);
+  if (homes.length < 2) return;
+  const ppsf = h => Math.round(h.price_pkr / h.area_sqft);
+  const row = (name, fn, opts = {}) => {
+    const vals = homes.map(fn);
+    const b = opts.best ? (opts.low ? Math.min(...vals) : Math.max(...vals)) : null;
+    const tie = vals.every(v => v === b);
+    return `<tr><th scope="row">${name}</th>${homes.map((h, n) =>
+      `<td class="${opts.best && !tie && vals[n] === b ? "best" : ""}">${opts.fmt ? opts.fmt(vals[n]) : esc(vals[n])}</td>`).join("")}</tr>`;
+  };
+  const feats = [...new Set(homes.flatMap(h => h.features || []))].sort();
+  $("cmp-table").innerHTML =
+    `<tr><th></th>${homes.map(h => { const p = firstPhoto(h.id); return `<td><button type="button" class="cmp-photo" data-home="${esc(h.id)}">${p ? `<img src="${esc(p.thumb)}" alt="">` : ""}<b>${esc(h.title)}</b><small>${esc(h.id)} · ${esc(h.area)}</small></button></td>`; }).join("")}</tr>` +
+    row("Price", h => h.price_pkr, {best: true, low: true, fmt: money}) +
+    row("Price per sq ft", ppsf, {best: true, low: true, fmt: v => `PKR ${v.toLocaleString("en")}`}) +
+    row("Bedrooms", h => h.beds, {best: true}) +
+    row("Bathrooms", h => h.baths, {best: true}) +
+    row("Floor area", h => h.area_sqft, {best: true, fmt: v => `${v.toLocaleString("en")} sq ft`}) +
+    row("Built", h => h.year_built, {best: true}) +
+    row("To centre", h => h.commute_min_to_center, {best: true, low: true, fmt: v => `${v} min`}) +
+    row("Status", h => STATUS_WORDS[h.status]) +
+    row("Est. monthly", h => payment(h.price_pkr, 25, 14, 20).monthly, {best: true, low: true, fmt: v => `PKR ${v.toLocaleString("en")}`}) +
+    feats.map(f => row(label(f), h => (h.features || []).includes(f), {fmt: v => v ? '<span class="yes">Yes</span>' : '<span class="no">—</span>'})).join("");
+  $("cmp-ask").disabled = !llmReady || busy;
+  $("compare").showModal();
+}
+$("tray-go").onclick = openCompare;
+$("tray-clear").onclick = () => { compareSet.clear(); syncCompare(); };
+$("cmp-close").onclick = () => $("compare").close();
+$("compare").addEventListener("click", e => { if (e.target === $("compare")) $("compare").close(); });
+$("cmp-ask").onclick = () => {
+  const ids = [...compareSet];
+  const list = ids.length === 2 ? `${ids[0]} and ${ids[1]}` : `${ids.slice(0, -1).join(", ")} and ${ids.at(-1)}`;
+  const text = `Compare ${list}, recommend one, and estimate the monthly payment using your planning assumptions.`;
+  $("compare").close();
+  if (llmReady && !busy) { openDrawer(); send(text); } else prefill(text);
+};
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-fav]");
+  if (f) { toggleFav(f.dataset.fav, f); return; }
+  const c = e.target.closest("[data-cmp]");
+  if (c) { toggleCompare(c.dataset.cmp); return; }
+  const u = e.target.closest("[data-uncmp]");
+  if (u) { compareSet.delete(u.dataset.uncmp); syncCompare(); }
+});
+$("nav-saved").onclick = () => { Object.assign(filters, {saved: true, picks: false}); applyFilters(true); };
+
+/* ---------- Mortgage calculator: same formula as the agent's monthly payment tool ---------- */
+function payment(price, downPct, ratePct, years) {
+  const loan = price * (1 - downPct / 100), n = years * 12, r = ratePct / 100 / 12;
+  const monthly = r === 0 ? loan / n : loan * r / (1 - (1 + r) ** -n);
+  return {loan: Math.round(loan), monthly: Math.round(monthly)};
+}
+function drawCalc() {
+  const h = homesById[openId];
+  if (!h) return;
+  const d = +$("c-down").value, r = +$("c-rate").value, y = +$("c-years").value;
+  $("c-down-o").textContent = `${d}% · ${money(h.price_pkr * d / 100)}`;
+  $("c-rate-o").textContent = `${r}%`;
+  $("c-years-o").textContent = `${y} years`;
+  const pay = payment(h.price_pkr, d, r, y);
+  $("c-pay").textContent = `PKR ${pay.monthly.toLocaleString("en")} / month`;
+  $("c-loan").textContent = `Loan ${money(pay.loan)}`;
+}
+["c-down", "c-rate", "c-years"].forEach(id => $(id).oninput = drawCalc);
+
+$("search").onsubmit = e => {
+  e.preventDefault();
+  filters.area = $("f-area").value; filters.maxPrice = $("f-price").value; filters.minBeds = $("f-beds").value; filters.q = $("f-q").value.trim();
+  filters.picks = false;
+  applyFilters(true);
+  $("listings").scrollIntoView();
+};
+$("f-area").onchange = () => { filters.area = $("f-area").value; applyFilters(true); };
+$("f-avail").onchange = () => { filters.avail = $("f-avail").checked; applyFilters(true); };
+$("f-sort").onchange = () => { filters.sort = $("f-sort").value; applyFilters(true); };
+
+document.addEventListener("change", async e => {
+  const sel = e.target.closest("[data-status]");
+  if (!sel) return;
+  const id = sel.dataset.status, value = sel.value;
+  const r = await post("/api/status", {id, status: value});
+  if (r.ok) {
+    freshStamp = id;
+    pendingChange = id;
+    proof.replan.on = false;
+    proof.replan.note = `${id} is now ${STATUS_WORDS[value].toLowerCase()}. Ask Deedly about it to see re-planning`;
+    drawProof();
+  }
+  await refresh();
+  freshStamp = null;
+});
+
+/* ---------- Home sheet ---------- */
+const dialog = () => $("home");
+let openId = null, photoIndex = 0;
+
+function showPhoto(i) {
+  const list = photos[openId] || [];
+  if (!list.length) return;
+  photoIndex = (i + list.length) % list.length;
+  const p = list[photoIndex], img = $("stage-img");
+  const credit = $("photo-credit");
+  credit.hidden = !p.attribution;
+  credit.innerHTML = p.attribution ? `Photo: <a href="${esc(p.credit)}" target="_blank" rel="noopener">${esc(p.attribution)}</a>` : "";
+  const swap = () => { img.src = p.src; img.alt = p.alt; };
+  if (img.src && !reduceMotion.matches) { img.classList.add("out"); setTimeout(swap, 160); } else swap();
+  img.onload = () => img.classList.remove("out");
+  $("counter").textContent = `${photoIndex + 1} of ${list.length}`;
+  $("prev").hidden = $("next").hidden = list.length < 2;
+  $("thumbs").querySelectorAll("button").forEach((b, n) => b.setAttribute("aria-current", String(n === photoIndex)));
+  list.forEach(q => { new Image().src = q.src; });
+}
+
+function openHome(id) {
+  const h = homesById[id];
+  if (!h) return;
+  openId = id;
+  const list = photos[id] || [];
+  $("stage-img").removeAttribute("src");
+  $("stage").querySelector(".stamp")?.remove();
+  if (h.status === "sold") $("stage").insertAdjacentHTML("beforeend", '<div class="stamp">SOLD</div>');
+  $("thumbs").innerHTML = list.length > 1 ? list.map((p, n) =>
+    `<button type="button" aria-label="Photo ${n + 1}: ${esc(p.alt)}"><img src="${esc(p.thumb)}" alt=""></button>`).join("") : "";
+  $("thumbs").hidden = list.length < 2;
+  $("thumbs").querySelectorAll("button").forEach((b, n) => b.onclick = () => showPhoto(n));
+  const st = {available: "ok", under_offer: "offer", sold: "sold"}[h.status];
+  $("home-kicker").innerHTML = `<span class="badge ${st}">${STATUS_WORDS[h.status]}</span><span class="badge">${esc(label(h.type))}</span><span class="badge">${esc(id)}</span>`;
+  $("home-title").textContent = h.title;
+  $("home-area").innerHTML = `${icon("pin")}${esc(h.area)}, Lahore`;
+  $("home-price").innerHTML = `<b>${money(h.price_pkr)}</b><span>${Math.round(h.price_pkr / h.area_sqft).toLocaleString("en")} PKR per sq ft</span>`;
+  $("home-facts").innerHTML = [["Bedrooms", h.beds], ["Bathrooms", h.baths], ["Floor area", `${h.area_sqft.toLocaleString("en")} sq ft`],
+    ["Built", h.year_built], ["To centre", `${h.commute_min_to_center} min`], ["Reference", id]]
+    .map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
+  $("home-features").innerHTML = (h.features || []).map(f => `<li>${esc(label(f))}</li>`).join("");
+  $("home-desc").textContent = h.description || "";
+  $("c-down").value = 25; $("c-rate").value = 14; $("c-years").value = 20;
+  drawCalc();
+  $("home-ask").disabled = !llmReady || busy;
+  if (!dialog().open) dialog().showModal();
+  photoIndex = 0;
+  showPhoto(0);
+  $("home-close").focus();
+}
+
+$("home-close").onclick = () => dialog().close();
+$("prev").onclick = () => showPhoto(photoIndex - 1);
+$("next").onclick = () => showPhoto(photoIndex + 1);
+dialog().addEventListener("click", e => { if (e.target === dialog()) dialog().close(); });
+dialog().addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") { e.preventDefault(); showPhoto(photoIndex - 1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); showPhoto(photoIndex + 1); }
+});
+$("home-ask").onclick = () => { dialog().close(); askAbout(openId); };
+$("home-view").onclick = () => {
+  const d = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
+  prefill(`Request a viewing of ${openId} on ${d} under the name `);
+};
+document.addEventListener("click", e => {
+  const target = e.target.closest("[data-home]");
+  if (target && !target.closest("dialog")) openHome(target.dataset.home);
+});
+
+/* ---------- Advisor drawer ---------- */
+function openDrawer() {
+  $("m-bubble").hidden = true;
+  document.body.classList.add("drawer-open");
+  $("drawer").setAttribute("aria-hidden", "false");
+  $("fab").classList.remove("unread");
+  setTimeout(() => $("text").focus(), 200);
+}
+function closeDrawer() {
+  document.body.classList.remove("drawer-open");
+  $("drawer").setAttribute("aria-hidden", "true");
+  $("fab").focus();
+}
+document.querySelectorAll("[data-open-advisor]").forEach(b => b.onclick = openDrawer);
+$("close-drawer").onclick = closeDrawer;
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape" || dialog().open) return;
+  if (openPanel) { document.body.click(); return; }
+  if (document.body.classList.contains("drawer-open")) closeDrawer();
+});
+
+function prefill(text) {
+  if (dialog().open) dialog().close();
+  openDrawer();
+  $("text").value = text;
+  setTimeout(() => { $("text").focus(); $("text").setSelectionRange(text.length, text.length); }, 220);
+}
+function askAbout(id) {
+  const text = `Tell me about ${id}. Does it fit what I am looking for?`;
+  if (llmReady && !busy) { openDrawer(); send(text); } else prefill(text);
+}
+
+// Small Markdown subset. Text is escaped first, so model output cannot inject HTML.
+function render(md) {
+  const out = [], lines = md.split("\n");
+  const isItem = l => /^([-*]|\d+\.)\s/.test(l);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (line.startsWith("|")) {
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) rows.push(lines[i++].trim());
+      i--;
+      const cells = r => r.replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+      const body = rows.filter(r => !/^\|[\s:|-]+\|$/.test(r));
+      out.push('<div class="scroll"><table>' + body.map((r, n) => "<tr>" + cells(r).map(c =>
+        n === 0 ? `<th>${inline(c)}</th>` : `<td>${inline(c)}</td>`).join("") + "</tr>").join("") + "</table></div>");
+    } else if (isItem(line)) {
+      const items = [];
+      while (i < lines.length && isItem(lines[i].trim())) items.push(lines[i++].trim().replace(/^([-*]|\d+\.)\s/, ""));
+      i--;
+      out.push("<ul>" + items.map(t => `<li>${inline(t)}</li>`).join("") + "</ul>");
+    } else {
+      out.push(`<p>${inline(line.replace(/^#+\s*/, ""))}</p>`);
+    }
+  }
+  return out.join("");
+}
+
+function add(cls, html) {
+  const el = document.createElement("div");
+  el.className = cls;
+  el.innerHTML = html;
+  $("log").appendChild(el);
+  $("log").scrollTop = $("log").scrollHeight;
+  return el;
+}
+const AVATAR = '<div class="avatar dee"><svg class="mascot" viewBox="0 0 100 100" aria-hidden="true"><use href="#dee"/></svg></div>';
+
+function addStrip(ids) {
+  const homes = ids.map(id => homesById[id]).filter(Boolean).slice(0, 6);
+  if (!homes.length) return;
+  const el = add("strip", homes.map(h => {
+    const p = firstPhoto(h.id);
+    return `<button type="button" class="mini${h.status === "available" ? "" : " gone"}" data-home="${esc(h.id)}" aria-label="Open ${esc(h.id)}, ${esc(h.title)}">` +
+      (p ? `<img src="${esc(p.thumb)}" alt="" loading="lazy">` : "") +
+      `<span>${esc(h.id)} · ${esc(h.area)}${h.status === "available" ? "" : " · " + STATUS_WORDS[h.status]}</span><b>${money(h.price_pkr)}</b></button>`;
+  }).join(""));
+  el.setAttribute("aria-label", "Homes in this answer");
+  const link = document.createElement("button");
+  link.type = "button";
+  link.className = "picks-link";
+  link.textContent = "Show these in the listings";
+  $("log").appendChild(link);
+  link.onclick = () => {
+    filters.picks = true;
+    applyFilters(true);
+    if (innerWidth < 900) closeDrawer();
+    $("listings").scrollIntoView();
+  };
+}
+
+function setBusy(value) {
+  busy = value;
+  $("send").disabled = value || !llmReady;
+  document.querySelectorAll(".script button").forEach(b => b.disabled = value || !llmReady);
+  document.querySelectorAll(".ask").forEach(b => b.disabled = value);
+}
+
+function showOpening() {
+  $("log").replaceChildren();
+  const el = add("hello", `
+    <h3>Hi, I'm Deedly. What are you looking for?</h3>
+    <p>Try these in order for the full demo, or ask your own question. Change a home's status on its card at any point to test re-planning.</p>
+    <ol class="script">${SCRIPT.map(([lbl, text], i) =>
+      `<li><button type="button" data-i="${i}"><b>${i + 1}. ${esc(lbl)}</b><span>${esc(text)}</span></button></li>`).join("")}</ol>`);
+  el.querySelectorAll("button").forEach(b => { b.onclick = () => send(SCRIPT[+b.dataset.i][1]); b.disabled = !llmReady; });
+}
+
+function addStep(step, box) {
+  const d = document.createElement("details");
+  d.className = "step";
+  d.innerHTML = `<summary><span class="via ${step.via === "mcp" ? "" : "local"}">${esc(step.via.toUpperCase())}</span> ` +
+    `<code>${esc(step.tool)}</code>${step.is_error ? ' <span class="fail">failed</span>' : ""}</summary>` +
+    `<pre>Input: ${esc(JSON.stringify(step.input))}\n\nOutput: ${esc(step.output.slice(0, 2000))}</pre>`;
+  box.appendChild(d);
+}
+
+function onToolEvent(step, count, state, waiting) {
+  if (state.first) { $("trace").replaceChildren(); state.first = false; }
+  addStep(step, $("trace"));
+  setCount("trace", $("trace").querySelectorAll(".step").length);
+  waiting.querySelector("span:last-child").textContent = `Running ${step.tool.replace(/_/g, " ")}`;
+  addChatStep(step, state);
+  if (step.is_error) return;
+  if (step.via === "mcp") {
+    state.mcp += 1;
+    state.total += 1;
+    const calls = count.total + state.total;
+    mark("mcp", `${calls} ${calls === 1 ? "call" : "calls"} this session, latest ${step.tool}`);
+    if (pendingChange && ["get_property", "search_properties", "compare_properties"].includes(step.tool)) {
+      mark("replan", `${pendingChange} changed, and the agent re-checked with ${step.tool}`);
+      pendingChange = null;
+    }
+  }
+  if (step.tool === "retrieve_knowledge") {
+    const passages = JSON.parse(step.output).passages || [];
+    if (passages.length) {
+      mark("rag", `${passages.length} ${passages.length === 1 ? "passage" : "passages"} retrieved, top score ${passages[0].similarity}`);
+      $("sources").replaceChildren();
+      passages.forEach(p => {
+        const m = document.createElement("div");
+        m.className = "memo";
+        m.innerHTML = `<b>${esc(p.citation)}</b> <small>${esc(p.section)}, score ${esc(p.similarity)}</small>`;
+        $("sources").appendChild(m);
+      });
+      setCount("sources", passages.length);
+    }
+  }
+  if (step.tool === "save_preference") refresh();
+}
+
+function askApproval(event) {
+  const a = event.input;
+  const p = firstPhoto(a.property_id), h = homesById[a.property_id];
+  const el = add("approval",
+    `<div class="${p ? "approval-grid" : ""}">${p ? `<img src="${esc(p.thumb)}" alt="${esc(p.alt)}">` : ""}<div>` +
+    `<h3>Send this viewing request?</h3><div>Home <strong>${esc(a.property_id)}</strong>${h ? `, ${esc(h.title)}` : ""}, ${esc(a.preferred_date)}, under the name ${esc(a.buyer_name)}. Nothing is sent unless you approve.</div>` +
+    `<div class="actions"><button class="btn primary sm" type="button">Approve request</button><button class="btn ghost sm" type="button">Decline</button></div></div></div>`);
+  const [yes, no] = el.querySelectorAll("button");
+  const answer = async approved => {
+    yes.disabled = no.disabled = true;
+    const r = await post("/api/approve", {user: user(), id: event.id, approved});
+    if (!r.ok) { el.querySelector(".actions").append("This request expired."); return; }
+    el.querySelector(".actions").replaceChildren(approved ? "Approved by the buyer." : "Declined. The request was not sent.");
+    mark("human", approved ? "The buyer approved a request" : "The buyer declined, and the server was never called");
+  };
+  yes.onclick = () => answer(true);
+  no.onclick = () => answer(false);
+  openDrawer();
+  yes.focus();
+}
+
+let turns = 0, mcpTotal = 0;
+
+const STEP_WORDS = {
+  search_properties: a => ["MCP", "Searched listings" + (a.area ? ` in ${a.area}` : "") + (a.max_price ? ` under ${money(a.max_price)}` : "")],
+  get_property: a => ["MCP", `Checked ${a.property_id || "a home"}`],
+  compare_properties: a => ["MCP", `Compared ${(a.property_ids || []).join(", ")}`],
+  estimate_monthly_payment: () => ["MCP", "Estimated the monthly payment"],
+  request_viewing: a => ["MCP", `Viewing request for ${a.property_id || "a home"}`],
+  retrieve_knowledge: a => ["RAG", `Read the guides: “${a.query || ""}”`],
+  save_preference: a => ["MEM", `Saved to memory: ${String(a.key || "").replace(/_/g, " ")}`],
+  forget_preference: a => ["MEM", `Forgot: ${String(a.key || "").replace(/_/g, " ")}`],
+};
+function addChatStep(step, state) {
+  if (!state.steps) {
+    state.steps = document.createElement("ol");
+    state.steps.className = "steps";
+    state.steps.setAttribute("aria-label", "What Deedly did");
+    $("log").insertBefore(state.steps, state.waiting);
+  }
+  state.steps.querySelector(".now")?.classList.remove("now");
+  const [kind, words] = (STEP_WORDS[step.tool] || (() => [step.via.toUpperCase(), step.tool]))(step.input || {});
+  let extra = "";
+  if (step.tool === "retrieve_knowledge" && !step.is_error) {
+    try { const n = (JSON.parse(step.output).passages || []).length; extra = ` · ${n} ${n === 1 ? "source" : "sources"}`; } catch {}
+  }
+  const cls = step.is_error ? "err" : step.via === "approval" ? "ok" : {RAG: "rag", MEM: "mem"}[kind] || "";
+  const li = document.createElement("li");
+  li.className = "now";
+  li.innerHTML = `<span class="k ${cls}">${esc(step.via === "approval" ? "ASK" : kind)}</span><span>${esc(words + extra)}${step.is_error ? " (failed)" : ""}</span>`;
+  state.steps.appendChild(li);
+  $("log").scrollTop = $("log").scrollHeight;
+  mascot.react(kind === "RAG" ? "read" : "work");
+}
+function finishSteps(state) {
+  if (!state.steps) return;
+  state.steps.querySelector(".now")?.classList.remove("now");
+}
+
+async function send(text) {
+  document.querySelector(".hello")?.remove();
+  add("buyer", esc(text));
+  setBusy(true);
+  const waiting = add("working", '<span class="dots"><i></i><i></i><i></i></span><span>Thinking</span>');
+  const state = {first: true, mcp: 0, total: 0, waiting};
+  mascot.react("think");
+  try {
+    const r = await post("/api/chat", {user: user(), message: text});
+    if (!r.ok) {
+      const e = await r.json();
+      waiting.className = "error";
+      waiting.textContent = e.error;
+      return;
+    }
+    const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buffer += value;
+      const parts = buffer.split("\n");
+      buffer = parts.pop();
+      for (const part of parts.filter(Boolean)) {
+        const event = JSON.parse(part);
+        if (event.type === "approval") askApproval(event);
+        else if (event.type === "tool") onToolEvent(event.step, {total: mcpTotal}, state, waiting);
+        else if (event.type === "done") {
+          finishSteps(state);
+          waiting.remove();
+          mcpTotal += state.total;
+          mascot.react(event.ok ? "happy" : "sad");
+          if (!event.ok) { add("error", esc(event.text)); continue; }
+          add("advisor", `${AVATAR}<div class="txt">${render(event.text)}</div>`);
+          turns += 1;
+          $("session-note").textContent = `${turns} ${turns === 1 ? "turn" : "turns"} in this session`;
+          mark("llm", "Answer written by the configured model");
+          if (turns > 1) mark("short", `${turns} turns sent as history on each request`);
+          if (state.first) { $("trace").innerHTML = '<div class="empty">Answered without tools.</div>'; setCount("trace", 0); }
+          mentioned = new Set(event.text.match(/\bP-\d{3}\b/g) || []);
+          addStrip([...mentioned]);
+          if (!document.body.classList.contains("drawer-open")) $("fab").classList.add("unread");
+        }
+      }
+    }
+  } catch {
+    waiting.className = "error";
+    waiting.textContent = "Lost connection to the local server. Check that it is still running, then retry.";
+  } finally {
+    setBusy(false);
+    refresh();
+    if (document.body.classList.contains("drawer-open")) $("text").focus();
+  }
+}
+
+function showMemory(memories) {
+  $("memory").innerHTML = memories.length
+    ? memories.map(m => `<div class="memo"><b>${esc(m.key.replace(/_/g, " "))}:</b> ${esc(m.value)}</div>`).join("")
+    : '<div class="empty">Nothing saved for this buyer.</div>';
+  setCount("memory", memories.length);
+  if (memories.length) mark("long", `${memories.length} saved in SQLite, kept across sessions`);
+}
+
+async function refresh() {
+  const s = await (await fetch("/api/state?user=" + encodeURIComponent(user()))).json();
+  const wasReady = llmReady;
+  llmReady = s.llm_ready;
+  allHomes = s.properties;
+  homesById = Object.fromEntries(allHomes.map(h => [h.id, h]));
+  $("lede").textContent = `${allHomes.length} homes across ${areasList().length} Lahore neighbourhoods. Search them here, then ask Deedly to compare homes, check the paperwork and book a viewing.`;
+  applyFilters(animateNext);
+  syncCompare();
+  showMemory(s.memories);
+  shortlist = new Set(s.shortlist || []);
+  syncFavs();
+  proof.llm.short = "LLM";
+  proof.llm.label = `LLM agent, ${s.model}`;
+  proof.mcp.note = proof.mcp.on ? proof.mcp.note : `${s.mcp_tools.length} tools connected, none called yet`;
+  drawProof();
+  $("live").classList.toggle("off", !llmReady);
+  if (wasReady !== llmReady || !llmReady) setBusy(busy);
+  $("key-notice")?.remove();
+  if (!llmReady) {
+    $("session-note").textContent = "Offline, no API key";
+    const n = add("notice", "<strong>No API key is set, so Deedly cannot answer yet.</strong> Copy <code>.env.example</code> to <code>.env</code>, set <code>GROQ_API_KEY</code> (or <code>ANTHROPIC_API_KEY</code>), and restart the server. Search and listings work without a key.");
+    n.id = "key-notice";
+    document.querySelectorAll(".script button").forEach(b => b.disabled = true);
+  }
+}
+
+$("form").onsubmit = e => {
+  e.preventDefault();
+  const text = $("text").value.trim();
+  if (text && !busy && llmReady) { $("text").value = ""; send(text); }
+};
+$("text").onkeydown = e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); }
+};
+
+async function startSession() {
+  const r = await post("/api/reset", {user: user()});
+  if (!r.ok) { const e = await r.json(); add("error", esc(e.error)); return; }
+  turns = 0; mcpTotal = 0; mentioned = new Set(); pendingChange = null; filters.picks = false;
+  proof = freshProof();
+  $("session-note").textContent = "New session";
+  $("trace").innerHTML = '<div class="empty">No tools called yet.</div>';
+  $("sources").innerHTML = '<div class="empty">No documents retrieved yet.</div>';
+  setCount("trace", 0); setCount("sources", 0);
+  showOpening();
+  await refresh();
+}
+
+$("reset").onclick = startSession;
+$("reset2").onclick = startSession;
+$("user").onchange = startSession;
+addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 8), {passive: true});
+
+proof = freshProof();
+drawProof();
+showOpening();
+fetch("/static/homes/photos.json?v=3")
+  .then(r => r.ok ? r.json() : {})
+  .catch(() => ({}))
+  .then(p => { photos = p; animateNext = true; refresh(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deedly brand kit</title>
+<link rel="icon" href="/static/brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/tokens.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #17181c; color: var(--ink); font-family: var(--font); padding: 24px; }
+  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 1560px; margin: auto; }
+  .panel { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--paper); padding: 26px;
+           display: flex; flex-direction: column; justify-content: center; }
+  .label { position: absolute; left: 22px; bottom: 16px; font-size: 13px; color: var(--muted); }
+  .cobalt { background: var(--cobalt); color: #fff; }
+  .cobalt .label { color: var(--on-cobalt-soft); }
+  .sheet { background: var(--sheet); }
+
+  .cover { align-items: center; }
+  .lockup { display: flex; align-items: center; gap: 16px; }
+  .lockup img { width: 92px; }
+  .lockup span { font-size: 96px; font-weight: 800; font-stretch: 80%; letter-spacing: -.01em; line-height: 1; }
+
+  .construction svg { width: 62%; margin: auto; display: block; }
+  .tagline { font-size: clamp(36px, 4.4vw, 68px); line-height: 1; font-weight: 800; font-stretch: 74%; text-wrap: balance; }
+
+  .browser { background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 12px 28px rgb(0 0 0 / .32); }
+  .chrome { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: #e8e9ee; font-size: 12px; color: var(--muted); }
+  .chrome i { width: 9px; height: 9px; border-radius: 50%; background: #b6b9c4; }
+  .chrome span { margin-left: 8px; background: #fff; padding: 1px 10px; border-radius: 3px; }
+  .browser img { display: block; width: 100%; }
+
+  .swatches { display: grid; grid-template-columns: 2.2fr 1fr 1fr; grid-template-rows: 1.5fr 1fr; gap: 8px; flex: 1; margin-bottom: 26px; }
+  .swatch { padding: 10px 12px; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; justify-content: flex-end; line-height: 1.25; }
+  .swatch small { font-weight: 400; }
+
+  .specimen { font-size: 118px; line-height: .95; font-weight: 800; font-stretch: 72%; }
+  .specimen-body { font-size: 17px; margin-top: 14px; line-height: 1.4; max-width: 34ch; }
+  .numbers { font-size: 40px; font-weight: 700; font-stretch: 88%; font-variant-numeric: tabular-nums; margin-top: 8px; color: var(--cobalt); }
+
+  .card { background: #fff; width: 76%; margin: auto; padding: 18px 20px; box-shadow: 0 14px 30px rgb(0 0 0 / .3); transform: rotate(-2deg); position: relative; }
+  .card img { width: 30px; display: block; margin-bottom: 26px; }
+  .card h3 { font-size: 32px; font-weight: 800; font-stretch: 76%; line-height: 1.02; }
+  .card p { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .card .stamp-mini { position: absolute; right: 14px; top: 14px; color: var(--record); border: 2px solid currentColor; font-size: 13px; font-weight: 800; padding: 1px 6px; transform: rotate(6deg); }
+
+  .street { padding: 0; justify-content: flex-end; }
+  .street svg { display: block; width: 100%; height: 100%; }
+
+  .system { gap: 16px; align-items: flex-start; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .stamp { padding: 3px 12px; border: 4px solid var(--stamp); color: var(--stamp); border-radius: 3px; font-size: 36px; font-weight: 900; font-stretch: 72%; transform: rotate(-7deg); }
+  .offer { border-color: var(--pencil-ink); background: var(--pencil); color: var(--pencil-ink); font-size: 26px; }
+  .ring-demo { position: relative; font-size: 46px; font-weight: 800; font-stretch: 70%; color: var(--cobalt); padding: 6px 12px; }
+  .ring-demo svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .ring-demo path { fill: none; stroke: #e4a800; stroke-width: 2.6; stroke-linecap: round; }
+  .btn { background: var(--cobalt); color: #fff; padding: 8px 18px; border-radius: 4px; font-weight: 700; }
+  .via { font-size: 13px; font-weight: 800; padding: 1px 7px; border-radius: 2px; background: var(--cobalt); color: #fff; }
+  .tick { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+  .tick i { width: 20px; height: 20px; border-radius: 50%; background: var(--record); }
+  .cite { color: var(--record); font-weight: 600; border-bottom: 1px solid currentColor; }
+  @media (max-width: 900px) {
+    body { padding: 12px; }
+    .board { grid-template-columns: 1fr; }
+    .lockup span { font-size: 72px; } .lockup img { width: 68px; }
+  }
+</style>
+</head>
+<body>
+<main class="board">
+  <section class="panel cobalt cover">
+    <div class="lockup"><img src="/static/brand/deedly-mark-reversed.svg" alt=""><span>Deedly</span></div>
+    <div class="label">Logo</div>
+  </section>
+
+  <section class="panel construction">
+    <svg viewBox="0 0 100 100" role="img" aria-label="Construction of the mark: a letter D with a house in its counter">
+      <g stroke="#d4d7e0" stroke-width=".35">
+        <path d="M0 8H100M0 35H100M0 53H100M0 74H100M0 92H100M10 0V100M29 0V100M49 0V100M69 0V100M92 0V100"/>
+      </g>
+      <path fill="#1a2fb8" fill-rule="evenodd" d="M10 8H52C78 8 92 28 92 50S78 92 52 92H10ZM29 53V74H69V53L49 35Z"/>
+      <path d="M29 53L49 35L69 53" fill="none" stroke="#ffc72c" stroke-width="1"/>
+    </svg>
+    <div class="label">The D holds a home in its counter</div>
+  </section>
+
+  <section class="panel sheet">
+    <div class="browser">
+      <div class="chrome"><i></i><i></i><i></i><span>127.0.0.1</span></div>
+      <img src="/static/brand/app-screenshot.png" alt="The Deedly app with catalogue, conversation and evidence panels">
+    </div>
+    <div class="label">In use, shown with scripted sample replies</div>
+  </section>
+
+  <section class="panel cobalt">
+    <p class="tagline">Every answer on the record.</p>
+    <div class="label">Promise</div>
+  </section>
+
+  <section class="panel">
+    <div class="swatches">
+      <div class="swatch" style="background:var(--cobalt);color:#fff">Cobalt<small>#1A2FB8</small></div>
+      <div class="swatch" style="background:var(--stamp);color:#fff">Stamp<small>#D3260F</small></div>
+      <div class="swatch" style="background:var(--pencil);color:var(--pencil-ink)">Pencil<small>#FFC72C</small></div>
+      <div class="swatch" style="background:var(--ink);color:#fff">Ink<small>#10131F</small></div>
+      <div class="swatch" style="background:var(--record);color:#fff">Record<small>#0C7044</small></div>
+      <div class="swatch" style="background:var(--sheet)">Sheet<small>#F3F4F7</small></div>
+    </div>
+    <div class="label">Colour</div>
+  </section>
+
+  <section class="panel">
+    <div class="specimen">Aa 103</div>
+    <div class="numbers">24.5M PKR</div>
+    <p class="specimen-body">Archivo throughout. Heavy and condensed for headings and home numbers, regular width for reading.</p>
+    <div class="label">Type</div>
+  </section>
+
+  <section class="panel sheet">
+    <div class="card">
+      <div class="stamp-mini">PENDING</div>
+      <img src="/static/brand/deedly-mark.svg" alt="">
+      <h3>Viewing request<br>VR-0001</h3>
+      <p>Home P-110, Gulberg. Simulated, with approval by the buyer.</p>
+    </div>
+    <div class="label">Print</div>
+  </section>
+
+  <section class="panel cobalt street">
+    <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" role="img" aria-label="A street of homes drawn in outline, one marked in pencil yellow">
+      <rect width="400" height="300" fill="#1a2fb8"/>
+      <g fill="none" stroke="#fff" stroke-width="2">
+        <path d="M-5 250H405"/>
+        <path d="M20 250V140L65 100L110 140V250"/><path d="M50 250V200H80V250"/><path d="M40 150H60V172H40ZM72 150H92V172H72Z"/>
+        <path d="M125 250V80H205V250"/><path d="M137 96H155V116H137ZM175 96H193V116H175ZM137 130H155V150H137ZM175 130H193V150H175ZM137 164H155V184H137ZM175 164H193V184H175Z"/><path d="M152 250V206H178V250"/>
+        <path d="M325 250V130L360 96L395 130V250"/><path d="M350 250V205H372V250"/>
+      </g>
+      <path d="M220 250V135L268 92L316 135V250Z" fill="#ffc72c" stroke="#fff" stroke-width="2"/>
+      <path d="M254 250V200H284V250M238 148H258V168H238ZM280 148H300V168H280Z" fill="none" stroke="#1a2fb8" stroke-width="2"/>
+    </svg>
+    <div class="label" style="color:#fff">Illustration: outlined homes, one chosen</div>
+  </section>
+
+  <section class="panel system" style="justify-content:center">
+    <div class="row"><span class="stamp">SOLD</span><span class="stamp offer">UNDER OFFER</span></div>
+    <div class="row">
+      <span class="ring-demo">103<svg viewBox="0 0 66 46" preserveAspectRatio="none" aria-hidden="true"><path d="M50 7C32-1 6 3 3 21c-3 17 22 24 42 20 16-3 22-16 15-27C55 6 42 4 31 6"/></svg></span>
+      <span class="btn">Approve request</span>
+    </div>
+    <div class="row"><span class="via">MCP</span><span class="tick"><i></i>RAG with sources</span><span class="cite">buying process#3</span></div>
+    <div class="label">System details</div>
+  </section>
+</main>
+</body>
+</html>
