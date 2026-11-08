@@ -228,8 +228,8 @@ Runtime data (`runtime/`: SQLite databases and the Chroma index) is created on f
 ### Install
 
 ```bash
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+git clone https://github.com/Hamzaviour/deedly-property-advisor.git
+cd deedly-property-advisor
 python -m venv .venv
 # Windows
 .venv\Scripts\activate
