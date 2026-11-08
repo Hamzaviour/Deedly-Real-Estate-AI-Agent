@@ -10,10 +10,11 @@ key is present, otherwise Groq when GROQ_API_KEY is present.
 """
 import json
 import os
+import re
 from types import SimpleNamespace as NS
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+GROQ_DEFAULT_MODEL = "openai/gpt-oss-120b"  # Replaced by discovery when retired.
 GROQ_MAX_TOKENS = 8000
 
 
@@ -52,35 +53,102 @@ def model_name(llm, default: str) -> str:
     return getattr(llm, "model", None) or default
 
 
+# Tool-capable chat models in order of preference. Groq retires models over time, so the
+# adapter asks the API which ones this key can use and picks the first available.
+GROQ_PREFERRED_MODELS = [
+    "openai/gpt-oss-120b",
+    "moonshotai/kimi-k2-instruct-0905",
+    "moonshotai/kimi-k2-instruct",
+    "llama-3.3-70b-versatile",
+    "qwen/qwen3-32b",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "openai/gpt-oss-20b",
+    "llama-3.1-8b-instant",
+]
+NOT_CHAT = re.compile(r"whisper|tts|guard|orpheus|playai|distil|compound|embed|vision|safeguard", re.I)
+
+
+def pick_groq_model(available: list[str]) -> str | None:
+    """Choose the best chat model from the ids the account can use."""
+    for name in GROQ_PREFERRED_MODELS:
+        if name in available:
+            return name
+    chat = [m for m in available if not NOT_CHAT.search(m)]
+    size = lambda m: max((float(x) for x in re.findall(r"(\d+(?:\.\d+)?)b\b", m.lower())), default=0)
+    return max(chat, key=size) if chat else None
+
+
 class GroqLLM:
     def __init__(self, api_key: str | None = None, model: str | None = None):
         from openai import AsyncOpenAI
 
-        self.model = model or os.getenv("GROQ_MODEL", GROQ_DEFAULT_MODEL)
+        explicit = model or os.getenv("GROQ_MODEL", "").strip()
+        self.model = explicit or GROQ_DEFAULT_MODEL
+        self._resolved = bool(explicit)  # An explicitly chosen model is used as given.
         self._client = AsyncOpenAI(api_key=api_key or os.getenv("GROQ_API_KEY"), base_url=GROQ_BASE_URL)
         self.beta = NS(messages=NS(create=self._create))
+
+    async def _resolve_model(self) -> None:
+        """Ask Groq which models exist, so a retired default never breaks the advisor."""
+        self._resolved = True
+        try:
+            listing = await self._client.models.list()
+            available = [m.id for m in listing.data]
+        except Exception:
+            return  # Keep the current model; the chat call reports any real problem.
+        chosen = pick_groq_model(available)
+        if chosen:
+            self.model = chosen
 
     async def _create(self, *, system, tools, messages, max_tokens, **_ignored):
         import openai
 
-        try:
-            response = await self._client.chat.completions.create(
-                model=self.model,
-                max_tokens=min(max_tokens, GROQ_MAX_TOKENS),
-                messages=to_openai_messages(system, messages),
-                tools=[to_openai_tool(t) for t in tools],
-                tool_choice="auto",
-                parallel_tool_calls=False,
-            )
-        except openai.AuthenticationError:
-            raise LLMServiceError("The Groq API key was rejected. Check GROQ_API_KEY in .env.")
-        except openai.RateLimitError:
-            raise LLMServiceError("Groq rate limit reached. Please retry shortly.")
-        except openai.APIStatusError as e:
-            raise LLMServiceError(f"Groq service error {e.status_code}. Please retry.")
-        except openai.APIConnectionError:
-            raise LLMServiceError("Could not reach Groq. Check the internet connection.")
-        return from_openai_response(response)
+        if not self._resolved:
+            await self._resolve_model()
+        request = dict(
+            max_tokens=min(max_tokens, GROQ_MAX_TOKENS),
+            messages=to_openai_messages(system, messages),
+            tools=[to_openai_tool(t) for t in tools],
+            tool_choice="auto",
+            parallel_tool_calls=False,
+        )
+        for attempt in range(2):
+            try:
+                response = await self._client.chat.completions.create(model=self.model, **request)
+                return from_openai_response(response)
+            except openai.AuthenticationError:
+                raise LLMServiceError("The Groq API key was rejected. Check GROQ_API_KEY.")
+            except openai.RateLimitError:
+                raise LLMServiceError("Groq rate limit reached. Please retry shortly.")
+            except openai.NotFoundError:
+                if attempt == 0:  # Model retired or not enabled for this key: rediscover once.
+                    old = self.model
+                    await self._resolve_model()
+                    if self.model != old:
+                        continue
+                raise LLMServiceError(
+                    f"Groq model '{self.model}' is not available for this key. "
+                    "Set GROQ_MODEL to a model listed at console.groq.com/docs/models.")
+            except openai.BadRequestError as e:
+                # Groq rejects a malformed tool call with 400 tool_use_failed. One retry
+                # usually succeeds because generation is sampled.
+                if attempt == 0 and "tool_use_failed" in str(e):
+                    continue
+                raise LLMServiceError(f"Groq rejected the request: {_brief(e)}")
+            except openai.APIStatusError as e:
+                raise LLMServiceError(f"Groq service error {e.status_code}: {_brief(e)}")
+            except openai.APIConnectionError:
+                raise LLMServiceError("Could not reach Groq. Check the internet connection.")
+        raise LLMServiceError("Groq could not produce a valid tool call. Please retry.")
+
+
+def _brief(error) -> str:
+    body = getattr(error, "body", None)
+    message = body.get("message") if isinstance(body, dict) else None
+    if isinstance(body, dict) and isinstance(body.get("error"), dict):
+        message = body["error"].get("message", message)
+    return (message or str(error))[:200]
 
 
 def to_openai_tool(tool: dict) -> dict:

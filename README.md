@@ -163,7 +163,7 @@ More detail, including the system prompt justification, is in [docs/ARCHITECTURE
 | Language | Python 3.11+ (developed on 3.14) |
 | Web server | Starlette (ASGI) on Uvicorn, NDJSON streaming |
 | Frontend | One HTML page, vanilla JavaScript and CSS, no build step, inline SVG icons and mascot |
-| LLM | Groq (`llama-3.3-70b-versatile`, OpenAI-compatible API through the `openai` SDK) or Anthropic (`claude-opus-5-5` through the `anthropic` SDK) |
+| LLM | Groq (best available tool-capable model, picked automatically, OpenAI-compatible API through the `openai` SDK) or Anthropic (`claude-opus-5-5` through the `anthropic` SDK) |
 | Agent loop | Hand-written tool-use loop with tracing and an approval gate |
 | Tools protocol | Model Context Protocol: `FastMCP` server over stdio, official `ClientSession` client |
 | RAG | `fastembed` (`BAAI/bge-small-en-v1.5`, runs locally) + `chromadb` (cosine), section-aware chunking. Hosted builds use a pure-Python BM25 retriever over the same chunks and citations |
@@ -321,7 +321,7 @@ python -m realestate_agent.ingest
 | Variable | Default | Purpose |
 |---|---|---|
 | `GROQ_API_KEY` | | Use Groq as the LLM provider |
-| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Groq model. `openai/gpt-oss-120b` is a good alternative for tool use |
+| `GROQ_MODEL` | auto | Groq model. Unset, Deedly asks Groq which models your key can use and picks the best tool-capable one, so retired models never break it |
 | `ANTHROPIC_API_KEY` | | Use Anthropic as the LLM provider |
 | `RE_AGENT_MODEL` | `claude-opus-5-5` | Anthropic model |
 | `RE_AGENT_PROVIDER` | auto | `groq` or `anthropic`. Auto picks Anthropic if its key is set, otherwise Groq |

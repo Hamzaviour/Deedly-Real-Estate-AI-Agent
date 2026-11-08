@@ -226,9 +226,11 @@
   .calc label { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; color: var(--muted); }
   .calc label output { font-weight: 800; color: var(--ink); }
   .calc input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--brick); margin: 0; }
-  .calc-out { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--brick-tint); }
-  .calc-out b { font-size: 24px; font-weight: 800; font-stretch: 88%; color: var(--brick-deep); }
-  .calc-out span { font-size: 12.5px; color: var(--brick-deep); }
+  .calc-out { padding: 12px 14px; border-radius: 12px; background: var(--brick-tint); color: var(--brick-deep); }
+  .calc-out small { display: block; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
+  .calc-out b { display: block; font-size: 26px; line-height: 1.15; font-weight: 800; font-stretch: 88%; }
+  .calc-break { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid rgb(143 52 29 / .18); font-size: 12.5px; }
+  .calc-break dt { opacity: .8; } .calc-break dd { margin: 0; font-weight: 800; text-align: right; }
   .photo-credit { position: absolute; left: 12px; top: 12px; max-width: 70%; color: rgb(255 255 255 / .9); font-size: 11px; background: rgb(0 0 0 / .55); padding: 3px 8px; border-radius: 6px; text-align: left; }
   .photo-credit a { color: #fff; }
   .shortlist-link { display: inline-flex; align-items: center; gap: 6px; }
@@ -361,7 +363,11 @@
 
   /* ---------- Home sheet ---------- */
   dialog.home { width: min(1120px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: 20px; background: var(--surface); color: var(--ink); overflow: hidden; box-shadow: var(--shadow-lg); }
-  dialog.home[open] { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(330px, 1fr); animation: zoom .4s var(--ease); }
+  /* Fixed height with a single row, so the details column scrolls instead of being clipped. */
+  dialog.home[open] { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(340px, 1fr); grid-template-rows: minmax(0, 1fr);
+                      height: min(780px, calc(100vh - 48px)); animation: zoom .4s var(--ease); }
+  dialog.home[open] .gallery, dialog.home[open] .sheet { min-height: 0; }
+  dialog.home[open] .stage { aspect-ratio: auto; }
   dialog.home::backdrop { background: rgb(14 42 39 / .6); backdrop-filter: blur(4px); animation: fade .3s; }
   @keyframes zoom { from { opacity: 0; transform: translateY(18px) scale(.97); } }
   @keyframes fade { from { opacity: 0; } }
@@ -469,7 +475,8 @@
     .band { grid-template-columns: 1fr; }
   }
   @media (max-width: 860px) {
-    dialog.home[open] { grid-template-columns: 1fr; overflow-y: auto; }
+    dialog.home[open] { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; overflow-y: auto; }
+    dialog.home[open] .stage { aspect-ratio: 3 / 2; }
     .sheet { overflow: visible; }
     .facts { grid-template-columns: repeat(2, 1fr); }
   }
@@ -709,7 +716,8 @@
       <label>Down payment <output id="c-down-o"></output><input type="range" id="c-down" min="10" max="80" step="5" value="25"></label>
       <label>Interest rate <output id="c-rate-o"></output><input type="range" id="c-rate" min="8" max="24" step="0.5" value="14"></label>
       <label>Term <output id="c-years-o"></output><input type="range" id="c-years" min="5" max="25" step="1" value="20"></label>
-      <div class="calc-out"><b id="c-pay"></b><span id="c-loan"></span></div>
+      <div class="calc-out" aria-live="polite"><small>Estimated monthly payment</small><b id="c-pay"></b>
+        <dl class="calc-break"><dt>Loan amount</dt><dd id="c-loan"></dd><dt>Total interest</dt><dd id="c-interest"></dd><dt>Total paid</dt><dd id="c-total"></dd></dl></div>
     </div>
     <div class="sheet-actions">
       <button class="btn primary" id="home-ask" type="button"><svg class="i"><use href="#i-chat"/></svg>Ask Deedly about this home</button>
@@ -1147,10 +1155,13 @@ function drawCalc() {
   $("c-rate-o").textContent = `${r}%`;
   $("c-years-o").textContent = `${y} years`;
   const pay = payment(h.price_pkr, d, r, y);
-  $("c-pay").textContent = `PKR ${pay.monthly.toLocaleString("en")} / month`;
-  $("c-loan").textContent = `Loan ${money(pay.loan)}`;
+  const total = pay.monthly * y * 12;
+  $("c-pay").textContent = `PKR ${pay.monthly.toLocaleString("en")}`;
+  $("c-loan").textContent = money(pay.loan);
+  $("c-interest").textContent = money(Math.max(0, total - pay.loan));
+  $("c-total").textContent = money(total + h.price_pkr * d / 100);
 }
-["c-down", "c-rate", "c-years"].forEach(id => $(id).oninput = drawCalc);
+["c-down", "c-rate", "c-years"].forEach(id => { $(id).oninput = drawCalc; $(id).onchange = drawCalc; });
 
 $("search").onsubmit = e => {
   e.preventDefault();

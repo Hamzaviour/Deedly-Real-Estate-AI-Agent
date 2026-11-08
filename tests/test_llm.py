@@ -51,3 +51,40 @@ def test_provider_choice(monkeypatch):
     assert llm.provider() == "anthropic"
     monkeypatch.setenv("RE_AGENT_PROVIDER", "groq")
     assert llm.provider() == "groq"
+
+
+def test_model_discovery_prefers_tool_capable_models():
+    assert llm.pick_groq_model(["whisper-large-v3", "llama-3.1-8b-instant", "openai/gpt-oss-120b"]) == "openai/gpt-oss-120b"
+    # Unknown future names: skip audio and guard models, prefer the largest chat model.
+    assert llm.pick_groq_model(["whisper-x", "llama-guard-9-12b", "newco/chat-30b", "newco/chat-200b"]) == "newco/chat-200b"
+    assert llm.pick_groq_model(["whisper-large-v3"]) is None
+
+
+def test_retired_model_is_rediscovered_and_retried():
+    import asyncio
+
+    import httpx
+    import openai
+
+    class FakeCompletions:
+        def __init__(self):
+            self.models = []
+
+        async def create(self, model, **kw):
+            self.models.append(model)
+            if model == "retired-model":
+                req = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+                raise openai.NotFoundError("model not found", response=httpx.Response(404, request=req), body=None)
+            return NS(choices=[NS(finish_reason="stop", message=NS(content="ok", tool_calls=None))])
+
+    class FakeModels:
+        async def list(self):
+            return NS(data=[NS(id="openai/gpt-oss-120b"), NS(id="whisper-large-v3")])
+
+    g = llm.GroqLLM(api_key="x", model="placeholder")
+    g._resolved, g.model = True, "retired-model"
+    completions = FakeCompletions()
+    g._client = NS(chat=NS(completions=completions), models=FakeModels())
+    out = asyncio.run(g._create(system="s", tools=[], messages=[{"role": "user", "content": "hi"}], max_tokens=100))
+    assert out.content[0].text == "ok"
+    assert completions.models == ["retired-model", "openai/gpt-oss-120b"]

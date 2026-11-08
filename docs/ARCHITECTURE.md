@@ -12,7 +12,7 @@
 
 ## Components
 
-**LLM.** Two providers are supported. Anthropic (Claude Opus 5.5) runs through the official Anthropic Python SDK. Groq (default `llama-3.3-70b-versatile`) runs through its OpenAI-compatible API, using the adapter in `realestate_agent/llm.py`, which translates messages, tool definitions and tool calls in both directions so the agent loop is identical for either provider. The loop is written by hand so that every tool decision can be traced and viewing requests can be stopped for approval.
+**LLM.** Two providers are supported. Anthropic (Claude Opus 5.5) runs through the official Anthropic Python SDK. Groq (model discovered from the account's available models) runs through its OpenAI-compatible API, using the adapter in `realestate_agent/llm.py`, which translates messages, tool definitions and tool calls in both directions so the agent loop is identical for either provider. The loop is written by hand so that every tool decision can be traced and viewing requests can be stopped for approval.
 
 **Short-term memory.** The message list held by one `PropertyAgent` instance. It resolves phrases like "the cheaper one" and is gone when the session ends.
 
