@@ -13,6 +13,8 @@
 ![LLM](https://img.shields.io/badge/LLM-Groq%20%7C%20Anthropic-B4472C)
 ![Tests](https://img.shields.io/badge/tests-68%20passing-2E8A5C)
 
+**[🌐 Try the live demo](https://deedly-property-advisor.vercel.app/)**
+
 Assignment 2, Agent Based Modeling (AIDE3313), scenario 38: *retrieve property details, remember buyer preferences and compare options.*
 
 </div>
