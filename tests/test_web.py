@@ -156,6 +156,7 @@ def test_hosted_mode_scopes_buyer_names_to_a_signed_cookie(monkeypatch):
         assert a.get("/api/state?user=hamza").json()["memories"][0]["value"] == "27000000"
         # Another browser typing the same name sees nothing, and a forged cookie is rejected.
         assert b.get("/api/state?user=hamza").json()["memories"] == []
+        b.cookies.clear()  # Drop b's own valid cookie so only the forged one is sent.
         b.cookies.set(web.COOKIE, "0123456789abcdef.forged")
         assert b.post("/api/reset", json={"user": "hamza"}).status_code == 401
 
