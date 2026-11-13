@@ -488,9 +488,10 @@ python -m realestate_agent.web
 - Translate the whole interface, not only Dee's replies and the main labels
 
 ---
-
 ## Author
 
 **Hamza**: design, development and documentation.
+
+**Contributions:** Contributions and improvements are welcome.
 
 Built for Agent Based Modeling (AIDE3313), Assignment 2.
