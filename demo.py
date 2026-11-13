@@ -1,4 +1,4 @@
-"""Reproducible end-to-end demo with the real LLM. Needs ANTHROPIC_API_KEY in .env.
+"""Reproducible end-to-end demo with the real LLM. Needs ANTHROPIC_API_KEY or GROQ_API_KEY in .env.
 
 Covers every required component and writes evidence/demo_transcript.md. Run: python demo.py
 """
@@ -21,8 +21,8 @@ from realestate_agent.agent import PropertyAgent  # noqa: E402
 from realestate_agent.config import MODEL, require_api_key  # noqa: E402
 from realestate_agent.llm import make_llm  # noqa: E402
 from realestate_agent.mcp_client import ListingsMCPClient  # noqa: E402
-from realestate_agent.memory import LongTermMemory  # noqa: E402
-from realestate_agent.rag import KnowledgeBase  # noqa: E402
+from realestate_agent.memory import make_memory  # noqa: E402
+from realestate_agent.rag import make_knowledge  # noqa: E402
 
 USER = "demo_buyer"
 OUT = ROOT / "evidence" / "demo_transcript.md"
@@ -56,9 +56,9 @@ async def main() -> None:
     llm = make_llm()
     log(f"# Demo transcript\n\nModel: `{getattr(llm, 'model', None) or MODEL}`. "
         "All listings and documents are synthetic.")
-    knowledge = KnowledgeBase()
+    knowledge = make_knowledge()
     log(f"\nRAG index: {knowledge.ingest()}")
-    memory = LongTermMemory()
+    memory = make_memory()
 
     async with ListingsMCPClient() as mcp:
         tools = await mcp.list_tools()

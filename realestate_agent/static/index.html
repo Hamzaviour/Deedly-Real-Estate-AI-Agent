@@ -6,6 +6,8 @@
 <title>Deedly, homes in Lahore</title>
 <link rel="icon" href="/static/brand/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/tokens.css?v=3">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; scroll-padding-top: 120px; }
@@ -107,7 +109,7 @@
   .tab { border: 0; background: none; padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--muted); transition: background .2s, color .2s; }
   .tab:hover { color: var(--ink); }
   .tab[aria-pressed="true"] { background: var(--teal); color: #fff; }
-  .fields { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 8px; padding: 0 6px; }
+  .fields { display: grid; grid-template-columns: 1.4fr 1fr 1fr .8fr 1fr 1fr auto; gap: 8px; padding: 0 6px; }
   .field { display: flex; flex-direction: column; gap: 2px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; transition: border-color .15s, box-shadow .15s; min-width: 0; }
   .field:focus-within { border-color: var(--brick); box-shadow: 0 0 0 3px var(--brick-tint); }
   .field span { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -125,8 +127,8 @@
   .sec-head h2 { font-size: clamp(26px, 2.6vw, 34px); line-height: 1.1; font-weight: 800; font-stretch: 85%; letter-spacing: -.01em; }
   .sec-head p { color: var(--muted); margin-top: 4px; }
 
-  .areas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
-  .area { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 4 / 5; padding: 16px;
+  .areas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .area { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 4 / 3; padding: 16px;
           border: 0; border-radius: var(--radius); overflow: hidden; color: #fff; text-align: left; background: var(--teal); box-shadow: var(--shadow-sm); }
   .area img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--ease); }
   .area::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(14 42 39 / .9), rgb(14 42 39 / .05) 60%); transition: background .3s; }
@@ -468,7 +470,8 @@
     html { scroll-behavior: auto; }
   }
   @media (max-width: 1080px) {
-    .areas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .areas { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .area { aspect-ratio: 1; }
     .fields { grid-template-columns: 1fr 1fr; }
     .fields .btn { grid-column: 1 / -1; }
     nav.links { display: none; }
@@ -496,6 +499,54 @@
     .band { padding: 26px; }
     .fab span { display: none; }
     .fab { padding: 16px; }
+  }
+
+  /* Citations open the passage they rest on */
+  button.cite { border: 0; cursor: pointer; font: inherit; font-size: 11.5px; }
+  button.cite:hover, button.cite:focus-visible { background: #cdebd9; text-decoration: underline; }
+  #sources .memo[data-cite] { cursor: pointer; }
+  #sources .memo[data-cite]:hover { background: var(--bg); }
+  dialog.passage { border: 0; border-radius: 14px; padding: 0; width: min(560px, calc(100vw - 32px)); box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+  dialog.passage::backdrop { background: rgba(10, 30, 30, .45); }
+  .passage-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 18px 20px 8px; }
+  .passage-head h2 { font-size: 17px; margin: 0; }
+  .passage-head small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .passage-body { padding: 4px 20px 20px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; max-height: 60vh; overflow: auto; }
+  .passage-note { padding: 10px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+  /* Streaming answer */
+  .advisor.streaming .txt::after { content: ""; display: inline-block; width: 7px; height: 1em; margin-left: 2px; vertical-align: -2px; background: currentColor; opacity: .5; animation: caret 1s steps(2) infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .advisor.streaming .txt::after { animation: none; } }
+
+  /* Grid / map toggle */
+  .view-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .view-toggle button { border: 0; background: transparent; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .view-toggle button[aria-pressed="true"] { background: var(--ink, #12302f); color: #fff; }
+  #homes[hidden], #map-wrap[hidden], .sync-note[hidden] { display: none; }
+  #map { height: min(70vh, 620px); border-radius: 14px; border: 1px solid var(--line); z-index: 0; }
+  .map-pop b { display: block; font-size: 13px; }
+  .map-pop small { color: #555; display: block; margin: 2px 0 6px; }
+  .map-pop button { border: 0; background: #0f6b5c; color: #fff; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+  .map-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .sync-note { font-size: 12.5px; color: var(--muted); margin: -4px 0 10px; }
+  .sync-note b { color: var(--ok); }
+
+  /* Language */
+  .lang-field select { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 13px; }
+  .advisor .txt:lang(ur), .advisor .txt[dir="rtl"] { font-size: 15.5px; line-height: 1.9; }
+
+  /* Print / PDF export */
+  #print-report { display: none; }
+  @media print {
+    body > *:not(#print-report) { display: none !important; }
+    #print-report { display: block; color: #000; font: 11pt/1.45 system-ui, sans-serif; }
+    #print-report h1 { font-size: 18pt; margin: 0 0 4pt; }
+    #print-report .meta { color: #444; margin-bottom: 12pt; }
+    #print-report table { border-collapse: collapse; width: 100%; margin-bottom: 14pt; }
+    #print-report th, #print-report td { border: 1px solid #bbb; padding: 4pt 6pt; text-align: left; vertical-align: top; }
+    #print-report th { background: #eef3f2; }
+    #print-report .disclaimer { font-size: 9pt; color: #555; }
   }
 </style>
 </head>
@@ -553,7 +604,9 @@
           <input id="user" value="demo_buyer" maxlength="64" autocomplete="off" aria-label="Buyer name">
           <button class="icon-btn" id="reset" type="button" title="New session. Clears this conversation, saved memory stays." aria-label="Start a new session"><svg class="i"><use href="#i-refresh"/></svg></button>
         </label>
-        <button class="btn primary sm" type="button" data-open-advisor><svg class="i"><use href="#i-chat"/></svg>Ask Deedly</button>
+        <label class="lang-field"><span class="sr-only">Language</span>
+          <select id="lang" aria-label="Language"><option value="en">English</option><option value="ur" lang="ur">اردو</option></select></label>
+        <button class="btn primary sm" type="button" data-open-advisor><svg class="i"><use href="#i-chat"/></svg><span data-i18n="ask">Ask Deedly</span></button>
       </div>
     </div>
   </header>
@@ -576,6 +629,7 @@
         <button class="tab" type="button" data-type="house" aria-pressed="false">Houses</button>
         <button class="tab" type="button" data-type="apartment" aria-pressed="false">Apartments</button>
         <button class="tab" type="button" data-type="townhouse" aria-pressed="false">Townhouses</button>
+        <button class="tab" type="button" data-type="farmhouse" aria-pressed="false">Farmhouses</button>
       </div>
       <div class="fields">
         <label class="field"><span>Location</span><select id="f-area"><option value="">All of Lahore</option></select></label>
@@ -587,7 +641,14 @@
             <option value="25000000">PKR 2.5 Crore</option>
             <option value="30000000">PKR 3 Crore</option>
             <option value="40000000">PKR 4 Crore</option>
+            <option value="50000000">PKR 5 Crore</option>
+            <option value="75000000">PKR 7.5 Crore</option>
+            <option value="100000000">PKR 10 Crore</option>
+            <option value="150000000">PKR 15 Crore</option>
+            <option value="250000000">PKR 25 Crore</option>
           </select></label>
+        <label class="field"><span>Plot size</span>
+          <select id="f-size"><option value="">Any size</option></select></label>
         <label class="field"><span>Bedrooms</span>
           <select id="f-beds"><option value="">Any</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select></label>
         <label class="field"><span>Keyword</span><input id="f-q" type="search" placeholder="garden, solar, metro"></label>
@@ -599,7 +660,7 @@
 
   <section class="block" id="areas">
     <div class="wrap">
-      <div class="sec-head"><div><h2>Browse by area</h2><p>Five Lahore neighbourhoods, from central Gulberg to green Park View City.</p></div></div>
+      <div class="sec-head"><div><h2 data-i18n="areas">Browse by area</h2><p id="areas-sub">Lahore neighbourhoods, from central Gulberg to gated DHA and Bahria Town.</p></div></div>
       <div class="areas" id="area-cards"></div>
     </div>
   </section>
@@ -609,6 +670,10 @@
       <div class="sec-head">
         <div><h2 id="list-title">Homes for sale in Lahore</h2><p id="list-count"></p></div>
         <div class="toolbar">
+          <div class="view-toggle" role="group" aria-label="View">
+            <button type="button" data-view="grid" aria-pressed="true">Grid</button>
+            <button type="button" data-view="map" aria-pressed="false">Map</button>
+          </div>
           <label class="switch"><input type="checkbox" id="f-avail">Available only</label>
           <label>Sort
             <select id="f-sort">
@@ -618,10 +683,15 @@
               <option value="newest">Newest built</option>
               <option value="commute">Shortest commute</option>
             </select></label>
+          <button class="btn ghost sm" type="button" id="ask-results"><svg class="i"><use href="#i-chat"/></svg>Ask about these</button>
+          <button class="btn ghost sm" type="button" id="export-pdf">Save as PDF</button>
         </div>
       </div>
       <div class="active-filters" id="active"></div>
+      <p class="sync-note" id="sync-note" hidden></p>
       <div class="grid" id="homes" aria-live="polite"></div>
+      <div id="map-wrap" hidden><div id="map" role="region" aria-label="Map of listed homes"></div>
+        <p class="map-note">Pin positions are approximate, placed inside each area. Map data from OpenStreetMap contributors.</p></div>
     </div>
   </section>
 
@@ -664,9 +734,19 @@
   <div class="cmp-body"><table class="cmp-table" id="cmp-table"></table></div>
   <div class="cmp-foot">
     <p>Green ticks mark the best value in each row. Deedly ranks homes by how many of your saved criteria they meet, then by price per square foot.</p>
+    <button class="btn ghost" type="button" id="cmp-pdf">Save as PDF</button>
     <button class="btn primary" type="button" id="cmp-ask"><svg class="i"><use href="#i-chat"/></svg>Ask Deedly which is best</button>
   </div>
 </dialog>
+
+<dialog class="passage" id="passage" aria-labelledby="passage-title">
+  <div class="passage-head"><div><h2 id="passage-title">Source</h2><small id="passage-cite"></small></div>
+    <button class="icon-btn" type="button" id="passage-close" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="passage-body" id="passage-body"></div>
+  <div class="passage-note">This is the exact passage Deedly retrieved. Documents are synthetic course material, not legal or financial advice.</div>
+</dialog>
+
+<div id="print-report" aria-hidden="true"></div>
 
 <aside class="drawer" id="drawer" aria-label="Deedly advisor" aria-hidden="true">
   <div class="d-head">
@@ -680,7 +760,7 @@
   <div id="log" aria-live="polite"></div>
   <form class="composer" id="form">
     <div class="compose">
-      <textarea id="text" maxlength="4000" aria-label="Your message" placeholder="Ask about homes, areas or buying"></textarea>
+      <textarea id="text" maxlength="4000" aria-label="Your message" placeholder="Ask about homes, areas or buying" dir="auto"></textarea>
       <button class="btn primary send" id="send" aria-label="Send"><svg class="i"><use href="#i-send"/></svg></button>
     </div>
     <div class="compose-note">Synthetic listings. General information, not legal or financial advice.</div>
@@ -736,6 +816,7 @@ const SCRIPT = [
   ["Short-term memory", "Which of those is cheaper per square foot?"],
   ["Compare", "Compare P-103 and P-110, recommend one, and estimate the monthly payment using your planning assumptions."],
   ["RAG with sources", "How much deposit should I pay, and what should a lawyer check?"],
+  ["Re-planning (marks P-103 sold first)", "I've decided on P-103. Please re-check it and tell me what to do next.", {sold: "P-103"}],
   ["Viewing approval", "Request a viewing of P-110 on 2026-11-20 under the name Hamza."],
 ];
 const icon = (name, cls = "i") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -837,7 +918,7 @@ let shortlist = new Set(), compareSet = new Set();
 const MAX_COMPARE = 3;
 let proof, pendingChange = null;
 let allHomes = [], photos = {}, homesById = {};
-const filters = {type: "", area: "", maxPrice: "", minBeds: "", q: "", avail: false, picks: false, saved: false, sort: "price-asc"};
+const filters = {type: "", area: "", maxPrice: "", minBeds: "", size: "", q: "", avail: false, picks: false, saved: false, sort: "price-asc"};
 let animateNext = true;
 
 function freshProof() {
@@ -866,11 +947,32 @@ function inline(s) {
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\[([\w.-]+?\.md#\d+)\]/g, (_, c) => `<span class="cite" title="${c}">${c.replace(/^\d+_/, "").replace(".md", "").replace(/_/g, " ")}</span>`)
+    .replace(/\[([\w.-]+?\.md#\d+)\]/g, (_, c) => `<button type="button" class="cite" data-cite="${c}" title="Open the source passage ${c}">${c.replace(/^\d+_/, "").replace(".md", "").replace(/_/g, " ")}</button>`)
     .replace(/\bP-\d{3}\b/g, '<button type="button" class="home-ref" data-home="$&" title="Open $&">$&</button>');
 }
 
 const firstPhoto = id => (photos[id] || [])[0];
+// Plot size bands in marla (1 kanal = 20 marla). Bounds are padded because listed sizes vary a little.
+const SIZES = {
+  "upto5": {label: "Up to 5 Marla", min: 0, max: 5.5},
+  "6to10": {label: "6 to 10 Marla", min: 5.5, max: 10.5},
+  "11to19": {label: "11 to 19 Marla", min: 10.5, max: 19.5},
+  "1kanal": {label: "1 Kanal", min: 19.5, max: 20.5},
+  "1to2kanal": {label: "1.5 to 2 Kanal", min: 20.5, max: 40.5},
+  "2to5kanal": {label: "3 to 5 Kanal", min: 40.5, max: 100.5},
+  "5kanal": {label: "Over 5 Kanal", min: 100.5, max: Infinity},
+};
+const plotLabel = h => {
+  const m = h.marla ?? h.area_sqft / 225;
+  return m >= 19.5 ? `${+(m / 20).toFixed(1)} Kanal` : `${Math.round(m)} Marla`;
+};
+function sizeFromMarla(min, max) {
+  const lo = min ?? 0, hi = max ?? Infinity;
+  const hit = Object.entries(SIZES).find(([, b]) => Math.abs(b.min - lo) < 1 && (b.max === hi || Math.abs(b.max - hi) < 1));
+  if (hit) return hit[0];
+  const first = Object.entries(SIZES).find(([, b]) => b.max > lo);
+  return first ? first[0] : "";
+}
 // Pakistani convention: 1 crore = 10,000,000 and 1 lakh = 100,000.
 const money = n => n >= 1e7 ? `PKR ${+(n / 1e7).toFixed(2)} Crore` : `PKR ${+(n / 1e5).toFixed(1)} Lakh`;
 const label = f => f.replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
@@ -908,7 +1010,8 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- Listings ---------- */
-const AREA_FALLBACK = ["Johar Town", "Allama Iqbal Town", "Park View City", "Gulberg", "Model Town"];
+const AREA_FALLBACK = ["Johar Town", "Allama Iqbal Town", "Park View City", "Gulberg", "Model Town", "DHA Phase 6",
+  "DHA Phase 5", "Lahore Cantt", "Bahria Town", "Lake City", "Wapda Town", "Bedian Road", "Barki Road", "Raiwind Road"];
 function areasList() {
   const found = [...new Set(allHomes.map(h => h.area))];
   return AREA_FALLBACK.filter(a => found.includes(a)).concat(found.filter(a => !AREA_FALLBACK.includes(a)));
@@ -921,18 +1024,34 @@ function buildAreaUI() {
     sel.innerHTML = '<option value="">All of Lahore</option>' + areas.map(a => `<option>${esc(a)}</option>`).join("");
   }
   sel.value = filters.area;
-  $("quick").innerHTML = "<span>Popular:</span>" + areas.map(a =>
-    `<button type="button" class="chip" data-area="${esc(a)}" aria-pressed="${filters.area === a}">${esc(a)}</button>`).join("");
+  const QUICK_SIZES = [["upto5", "5 Marla"], ["6to10", "10 Marla"], ["1kanal", "1 Kanal"], ["1to2kanal", "2 Kanal"]];
+  $("quick").innerHTML = "<span>Popular:</span>" + areas.slice(0, 6).map(a =>
+    `<button type="button" class="chip" data-area="${esc(a)}" aria-pressed="${filters.area === a}">${esc(a)}</button>`).join("") +
+    QUICK_SIZES.map(([k, t]) => `<button type="button" class="chip" data-size="${k}" aria-pressed="${filters.size === k}">${t}</button>`).join("") +
+    `<button type="button" class="chip" data-quick-type="farmhouse" aria-pressed="${filters.type === "farmhouse"}">Farmhouses</button>`;
+  const usedPhotos = new Set();  // Listings share stock photos, so give each area its own.
   $("area-cards").innerHTML = areas.map(a => {
     const homes = allHomes.filter(h => h.area === a);
     const avail = homes.filter(h => h.status === "available");
     const cheapest = Math.min(...(avail.length ? avail : homes).map(h => h.price_pkr));
-    const p = homes.map(h => firstPhoto(h.id)).find(Boolean);
+    const all = homes.flatMap(h => photos[h.id] || []);
+    const p = all.find(x => !usedPhotos.has(x.src)) || all[0];
+    if (p) usedPhotos.add(p.src);
     return `<button type="button" class="area" data-area="${esc(a)}" aria-pressed="${filters.area === a}">` +
       (p ? `<img src="${esc(p.thumb)}" alt="" loading="lazy">` : "") +
       `<b>${esc(a)}</b><small>${homes.length} ${homes.length === 1 ? "home" : "homes"} · from ${money(cheapest)}</small></button>`;
   }).join("");
 }
+
+document.addEventListener("click", e => {
+  const c = e.target.closest("[data-size], [data-quick-type]");
+  if (!c) return;
+  if (c.dataset.size) filters.size = filters.size === c.dataset.size ? "" : c.dataset.size;
+  else filters.type = filters.type === c.dataset.quickType ? "" : c.dataset.quickType;
+  filters.picks = false;
+  applyFilters(true);
+  $("listings").scrollIntoView();
+});
 
 document.addEventListener("click", e => {
   const a = e.target.closest("[data-area]");
@@ -948,6 +1067,10 @@ function matches(h) {
   if (filters.area && h.area !== filters.area) return false;
   if (filters.maxPrice && h.price_pkr > +filters.maxPrice) return false;
   if (filters.minBeds && h.beds < +filters.minBeds) return false;
+  if (filters.size) {
+    const b = SIZES[filters.size], m = h.marla ?? h.area_sqft / 225;
+    if (b && (m < b.min || m > b.max)) return false;
+  }
   if (filters.avail && h.status !== "available") return false;
   if (filters.picks && !mentioned.has(h.id)) return false;
   if (filters.saved && !shortlist.has(h.id)) return false;
@@ -992,7 +1115,7 @@ function card(h, i) {
       <ul class="specs">
         <li>${icon("bed")}${esc(h.beds)} Beds</li>
         <li>${icon("bath")}${esc(h.baths)} Baths</li>
-        <li>${icon("area")}${h.area_sqft.toLocaleString("en")} sq ft</li>
+        <li title="${h.area_sqft.toLocaleString("en")} sq ft">${icon("area")}${plotLabel(h)}</li>
       </ul>
     </div>
     <div class="foot">
@@ -1012,6 +1135,7 @@ function applyFilters(animate = false) {
   buildAreaUI();
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-pressed", String(t.dataset.type === filters.type)));
   $("f-price").value = filters.maxPrice; $("f-beds").value = filters.minBeds; $("f-q").value = filters.q;
+  $("f-size").value = filters.size;
   $("f-avail").checked = filters.avail; $("f-sort").value = filters.sort;
   const list = allHomes.filter(matches).sort(SORTS[filters.sort]);
   $("list-title").textContent = filters.picks ? "Homes the advisor named" : filters.saved ? "Your shortlist" : `Homes for sale in ${filters.area || "Lahore"}`;
@@ -1028,15 +1152,18 @@ function applyFilters(animate = false) {
   if (filters.area) chips.push(["area", filters.area]);
   if (filters.maxPrice) chips.push(["maxPrice", "Up to " + money(+filters.maxPrice)]);
   if (filters.minBeds) chips.push(["minBeds", filters.minBeds + "+ beds"]);
+  if (filters.size) chips.push(["size", SIZES[filters.size].label]);
   if (filters.q) chips.push(["q", `"${filters.q}"`]);
   if (filters.avail) chips.push(["avail", "Available only"]);
   $("active").innerHTML = chips.map(([k, t]) => `<button type="button" class="af" data-clear="${k}">${esc(t)}${icon("x")}</button>`).join("") +
     (chips.length > 1 ? '<button type="button" class="af clear" data-clear="all">Clear all</button>' : "");
   animateNext = false;
+  drawMap();
 }
 
 function clearFilter(k) {
-  if (k === "all") Object.assign(filters, {type: "", area: "", maxPrice: "", minBeds: "", q: "", avail: false, picks: false, saved: false});
+  $("sync-note").hidden = true;
+  if (k === "all") Object.assign(filters, {type: "", area: "", maxPrice: "", minBeds: "", size: "", q: "", avail: false, picks: false, saved: false});
   else filters[k] = typeof filters[k] === "boolean" ? false : "";
   applyFilters(true);
 }
@@ -1165,12 +1292,15 @@ function drawCalc() {
 
 $("search").onsubmit = e => {
   e.preventDefault();
-  filters.area = $("f-area").value; filters.maxPrice = $("f-price").value; filters.minBeds = $("f-beds").value; filters.q = $("f-q").value.trim();
+  filters.area = $("f-area").value; filters.maxPrice = $("f-price").value; filters.minBeds = $("f-beds").value; filters.size = $("f-size").value; filters.q = $("f-q").value.trim();
   filters.picks = false;
+  $("sync-note").hidden = true;
   applyFilters(true);
   $("listings").scrollIntoView();
 };
 $("f-area").onchange = () => { filters.area = $("f-area").value; applyFilters(true); };
+$("f-size").innerHTML = '<option value="">Any size</option>' + Object.entries(SIZES).map(([k, b]) => `<option value="${k}">${b.label}</option>`).join("");
+$("f-size").onchange = () => { filters.size = $("f-size").value; applyFilters(true); };
 $("f-avail").onchange = () => { filters.avail = $("f-avail").checked; applyFilters(true); };
 $("f-sort").onchange = () => { filters.sort = $("f-sort").value; applyFilters(true); };
 
@@ -1228,8 +1358,8 @@ function openHome(id) {
   $("home-title").textContent = h.title;
   $("home-area").innerHTML = `${icon("pin")}${esc(h.area)}, Lahore`;
   $("home-price").innerHTML = `<b>${money(h.price_pkr)}</b><span>${Math.round(h.price_pkr / h.area_sqft).toLocaleString("en")} PKR per sq ft</span>`;
-  $("home-facts").innerHTML = [["Bedrooms", h.beds], ["Bathrooms", h.baths], ["Floor area", `${h.area_sqft.toLocaleString("en")} sq ft`],
-    ["Built", h.year_built], ["To centre", `${h.commute_min_to_center} min`], ["Reference", id]]
+  $("home-facts").innerHTML = [["Bedrooms", h.beds], ["Bathrooms", h.baths], ["Plot size", plotLabel(h)], ["Area", `${h.area_sqft.toLocaleString("en")} sq ft`],
+    ["Built", h.year_built], ["To centre", `${h.commute_min_to_center} min`]]
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
   $("home-features").innerHTML = (h.features || []).map(f => `<li>${esc(label(f))}</li>`).join("");
   $("home-desc").textContent = h.description || "";
@@ -1363,10 +1493,10 @@ function showOpening() {
   $("log").replaceChildren();
   const el = add("hello", `
     <h3>Hi, I'm Deedly. What are you looking for?</h3>
-    <p>Try these in order for the full demo, or ask your own question. Change a home's status on its card at any point to test re-planning.</p>
+    <p>Try these in order for the full demo, or ask your own question. Step 5 marks a home sold first, the same as changing its status on its card.</p>
     <ol class="script">${SCRIPT.map(([lbl, text], i) =>
       `<li><button type="button" data-i="${i}"><b>${i + 1}. ${esc(lbl)}</b><span>${esc(text)}</span></button></li>`).join("")}</ol>`);
-  el.querySelectorAll("button").forEach(b => { b.onclick = () => send(SCRIPT[+b.dataset.i][1]); b.disabled = !llmReady; });
+  el.querySelectorAll("button").forEach(b => { b.onclick = () => runScriptStep(SCRIPT[+b.dataset.i]); b.disabled = !llmReady; });
 }
 
 function addStep(step, box) {
@@ -1395,15 +1525,20 @@ function onToolEvent(step, count, state, waiting) {
       pendingChange = null;
     }
   }
-  if (step.tool === "retrieve_knowledge") {
-    const passages = JSON.parse(step.output).passages || [];
+  if (step.tool === "search_properties") syncFromSearch(step.input || {});
+  if (step.tool === "retrieve_knowledge" || step.tool === "area_guide") {
+    let passages = [];
+    try { passages = JSON.parse(step.output).passages || []; } catch {}
     if (passages.length) {
       mark("rag", `${passages.length} ${passages.length === 1 ? "passage" : "passages"} retrieved, top score ${passages[0].similarity}`);
       $("sources").replaceChildren();
       passages.forEach(p => {
         const m = document.createElement("div");
         m.className = "memo";
-        m.innerHTML = `<b>${esc(p.citation)}</b> <small>${esc(p.section)}, score ${esc(p.similarity)}</small>`;
+        m.dataset.cite = p.citation;
+        m.tabIndex = 0;
+        m.setAttribute("role", "button");
+        m.innerHTML = `<b>${esc(p.citation)}</b> <small>${esc(p.section)}, score ${esc(p.similarity)}${p.matched_by ? ", matched by " + esc(p.matched_by.join(" + ")) : ""}</small>`;
         $("sources").appendChild(m);
       });
       setCount("sources", passages.length);
@@ -1442,6 +1577,9 @@ const STEP_WORDS = {
   estimate_monthly_payment: () => ["MCP", "Estimated the monthly payment"],
   request_viewing: a => ["MCP", `Viewing request for ${a.property_id || "a home"}`],
   retrieve_knowledge: a => ["RAG", `Read the guides: “${a.query || ""}”`],
+  area_guide: a => ["RAG", `Read the area guide for ${a.area || "an area"}`],
+  area_price_stats: a => ["MCP", `Price statistics${a.area ? " for " + a.area : " by area"}`],
+  affordability_check: () => ["MCP", "Checked what you can afford"],
   save_preference: a => ["MEM", `Saved to memory: ${String(a.key || "").replace(/_/g, " ")}`],
   forget_preference: a => ["MEM", `Forgot: ${String(a.key || "").replace(/_/g, " ")}`],
 };
@@ -1455,7 +1593,7 @@ function addChatStep(step, state) {
   state.steps.querySelector(".now")?.classList.remove("now");
   const [kind, words] = (STEP_WORDS[step.tool] || (() => [step.via.toUpperCase(), step.tool]))(step.input || {});
   let extra = "";
-  if (step.tool === "retrieve_knowledge" && !step.is_error) {
+  if ((step.tool === "retrieve_knowledge" || step.tool === "area_guide") && !step.is_error) {
     try { const n = (JSON.parse(step.output).passages || []).length; extra = ` · ${n} ${n === 1 ? "source" : "sources"}`; } catch {}
   }
   const cls = step.is_error ? "err" : step.via === "approval" ? "ok" : {RAG: "rag", MEM: "mem"}[kind] || "";
@@ -1476,10 +1614,10 @@ async function send(text) {
   add("buyer", esc(text));
   setBusy(true);
   const waiting = add("working", '<span class="dots"><i></i><i></i><i></i></span><span>Thinking</span>');
-  const state = {first: true, mcp: 0, total: 0, waiting};
+  const state = {first: true, mcp: 0, total: 0, waiting, live: null, liveText: ""};
   mascot.react("think");
   try {
-    const r = await post("/api/chat", {user: user(), message: text});
+    const r = await post("/api/chat", {user: user(), message: text, lang: lang()});
     if (!r.ok) {
       const e = await r.json();
       waiting.className = "error";
@@ -1497,14 +1635,18 @@ async function send(text) {
       for (const part of parts.filter(Boolean)) {
         const event = JSON.parse(part);
         if (event.type === "approval") askApproval(event);
-        else if (event.type === "tool") onToolEvent(event.step, {total: mcpTotal}, state, waiting);
+        else if (event.type === "text") streamText(state, event.delta);
+        else if (event.type === "tool") { dropLive(state); onToolEvent(event.step, {total: mcpTotal}, state, waiting); }
         else if (event.type === "done") {
+          dropLive(state);
           finishSteps(state);
           waiting.remove();
           mcpTotal += state.total;
           mascot.react(event.ok ? "happy" : "sad");
           if (!event.ok) { add("error", esc(event.text)); continue; }
-          add("advisor", `${AVATAR}<div class="txt">${render(event.text)}</div>`);
+          add("advisor", `${AVATAR}<div class="txt" dir="auto">${render(event.text)}</div>`);
+          if (event.grounding && event.grounding.unsupported_removed && event.grounding.unsupported_removed.length)
+            add("notice", `Grounding check: removed ${event.grounding.unsupported_removed.length === 1 ? "a statement" : event.grounding.unsupported_removed.length + " statements"} citing a source Deedly never retrieved. Every source left in the answer can be opened and checked.`);
           turns += 1;
           $("session-note").textContent = `${turns} ${turns === 1 ? "turn" : "turns"} in this session`;
           mark("llm", "Answer written by the configured model");
@@ -1526,12 +1668,191 @@ async function send(text) {
   }
 }
 
+/* ---------- Streaming text ---------- */
+let liveFrame = 0;
+function streamText(state, delta) {
+  state.liveText += delta;
+  if (!state.live) {
+    state.live = add("advisor streaming", `${AVATAR}<div class="txt" dir="auto"></div>`);
+    state.waiting.hidden = true;
+  }
+  cancelAnimationFrame(liveFrame);
+  liveFrame = requestAnimationFrame(() => {
+    if (!state.live) return;
+    state.live.querySelector(".txt").innerHTML = render(state.liveText);
+    $("log").scrollTop = $("log").scrollHeight;
+  });
+}
+// Text written before a tool call is the model thinking aloud; the final answer replaces it.
+function dropLive(state) {
+  cancelAnimationFrame(liveFrame);
+  state.live?.remove();
+  state.live = null;
+  state.liveText = "";
+  state.waiting.hidden = false;
+}
+
+/* ---------- Citations open their passage ---------- */
+async function openPassage(cite) {
+  $("passage-title").textContent = "Loading source…";
+  $("passage-cite").textContent = cite;
+  $("passage-body").textContent = "";
+  if (!$("passage").open) $("passage").showModal();
+  try {
+    const r = await fetch("/api/passage?id=" + encodeURIComponent(cite));
+    const p = await r.json();
+    if (!r.ok) throw new Error(p.error);
+    $("passage-title").textContent = p.section;
+    $("passage-cite").textContent = `${p.source}, passage ${cite.split("#")[1]}`;
+    $("passage-body").textContent = p.text;
+  } catch (e) {
+    $("passage-title").textContent = "Source not found";
+    $("passage-body").textContent = String(e.message || e);
+  }
+}
+document.addEventListener("click", e => {
+  const c = e.target.closest("[data-cite]");
+  if (c) { e.stopPropagation(); openPassage(c.dataset.cite); }
+});
+document.addEventListener("keydown", e => {
+  const c = e.target.closest?.("#sources [data-cite]");
+  if (c && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPassage(c.dataset.cite); }
+});
+$("passage-close").onclick = () => $("passage").close();
+$("passage").addEventListener("click", e => { if (e.target === $("passage")) $("passage").close(); });
+
+/* ---------- Chat and listings stay in sync ---------- */
+// When Deedly searches, the grid shows the same search, so the buyer sees what it saw.
+function syncFromSearch(a) {
+  Object.assign(filters, {
+    type: a.property_type ? String(a.property_type).toLowerCase() : "",
+    area: areasList().find(x => x.toLowerCase() === String(a.area || "").toLowerCase()) || "",
+    maxPrice: a.max_price ? String(a.max_price) : "",
+    minBeds: a.min_beds ? String(a.min_beds) : "",
+    size: a.min_marla != null || a.max_marla != null ? sizeFromMarla(a.min_marla, a.max_marla) : "",
+    q: "", avail: !a.include_unavailable, picks: false, saved: false,
+  });
+  applyFilters(true);
+  const note = $("sync-note");
+  note.innerHTML = "<b>Synced with Deedly:</b> these filters match the search Deedly just ran.";
+  note.hidden = false;
+}
+function describeFilters() {
+  const bits = [];
+  if (filters.type) bits.push(label(filters.type) + "s");
+  else bits.push("Homes");
+  if (filters.area) bits.push("in " + filters.area);
+  if (filters.maxPrice) bits.push("up to " + money(+filters.maxPrice));
+  if (filters.minBeds) bits.push(`with ${filters.minBeds}+ bedrooms`);
+  if (filters.size) bits.push(`on ${SIZES[filters.size].label} plots`);
+  if (filters.q) bits.push(`matching "${filters.q}"`);
+  return bits.join(" ");
+}
+$("ask-results").onclick = () => {
+  const list = allHomes.filter(matches).filter(h => h.status === "available").sort(SORTS[filters.sort]).slice(0, 6);
+  const text = filters.saved
+    ? `Compare my shortlisted homes (${[...shortlist].join(", ")}) and tell me which fits my saved preferences best.`
+    : `${describeFilters()}: which of these is the best fit for me, and why?` + (list.length ? ` The top ones on screen are ${list.map(h => h.id).join(", ")}.` : "");
+  if (llmReady && !busy) { openDrawer(); send(text); } else prefill(text);
+};
+
+/* ---------- Map view (Leaflet + OpenStreetMap) ---------- */
+let view = "grid", map = null, mapLayer = null;
+function drawMap() {
+  if (view !== "map" || !window.L) return;
+  if (!map) {
+    map = L.map("map", {scrollWheelZoom: false}).setView([31.48, 74.3], 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18, attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+    mapLayer = L.layerGroup().addTo(map);
+  }
+  mapLayer.clearLayers();
+  const list = allHomes.filter(matches).filter(h => h.lat && h.lng);
+  const colour = {available: "#0f6b5c", under_offer: "#c98a12", sold: "#9a9a9a"};
+  list.forEach(h => {
+    L.circleMarker([h.lat, h.lng], {
+      radius: shortlist.has(h.id) ? 10 : 7, weight: 2, color: "#fff",
+      fillColor: colour[h.status] || "#0f6b5c", fillOpacity: .95,
+    }).bindPopup(`<div class="map-pop"><b>${esc(h.id)} · ${esc(h.title)}</b><small>${money(h.price_pkr)} · ${esc(h.beds)} beds · ${esc(STATUS_WORDS[h.status])}</small><button type="button" data-home="${esc(h.id)}">View home</button></div>`)
+      .addTo(mapLayer);
+  });
+  if (list.length) map.fitBounds(L.latLngBounds(list.map(h => [h.lat, h.lng])).pad(0.15), {maxZoom: 14});
+  setTimeout(() => map.invalidateSize(), 0);
+}
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
+  view = b.dataset.view;
+  document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  $("homes").hidden = view === "map";
+  $("map-wrap").hidden = view !== "map";
+  if (view === "map" && !window.L) { $("map-wrap").querySelector(".map-note").textContent = "The map library could not load. Check the internet connection."; return; }
+  drawMap();
+});
+
+/* ---------- Save as PDF (browser print) ---------- */
+function printHomes(homes, title) {
+  if (!homes.length) { mascot.say("Nothing to export yet.", 2200); return; }
+  const ppsf = h => Math.round(h.price_pkr / h.area_sqft).toLocaleString("en");
+  const rows = homes.map(h => `<tr><td>${esc(h.id)}</td><td>${esc(h.title)}</td><td>${esc(h.area)}</td><td>${money(h.price_pkr)}</td>` +
+    `<td>PKR ${ppsf(h)}</td><td>${esc(h.beds)} / ${esc(h.baths)}</td><td>${h.area_sqft.toLocaleString("en")} sq ft (${plotLabel(h)})</td>` +
+    `<td>${esc(h.commute_min_to_center)} min</td><td>PKR ${payment(h.price_pkr, 25, 14, 20).monthly.toLocaleString("en")}</td>` +
+    `<td>${esc(STATUS_WORDS[h.status])}</td><td>${esc((h.features || []).map(label).join(", "))}</td></tr>`).join("");
+  $("print-report").innerHTML = `<h1>Deedly: ${esc(title)}</h1>` +
+    `<div class="meta">Buyer: ${esc(user())} · ${new Date().toLocaleDateString("en-GB", {day: "numeric", month: "long", year: "numeric"})} · ${homes.length} ${homes.length === 1 ? "home" : "homes"}</div>` +
+    `<table><tr><th>Id</th><th>Home</th><th>Area</th><th>Price</th><th>Per sq ft</th><th>Beds / baths</th><th>Size</th><th>To centre</th><th>Est. monthly*</th><th>Status</th><th>Features</th></tr>${rows}</table>` +
+    `<p class="disclaimer">*Illustrative payment at 25 percent down, 14 percent, 20 years, from Demo Realty's financing guide. Confirm real terms with a lender. All listings are synthetic data for a university project. General information, not legal or financial advice.</p>`;
+  print();
+}
+$("export-pdf").onclick = () => printHomes(allHomes.filter(matches).sort(SORTS[filters.sort]),
+  filters.saved ? "Your shortlist" : filters.picks ? "Homes the advisor named" : describeFilters());
+$("cmp-pdf").onclick = () => { const homes = [...compareSet].map(id => homesById[id]).filter(Boolean); $("compare").close(); printHomes(homes, "Home comparison"); };
+
+/* ---------- Language ---------- */
+const I18N = {
+  ur: {ask: "ڈیڈلی سے پوچھیں", areas: "علاقے کے لحاظ سے دیکھیں", placeholder: "گھروں، علاقوں یا خریداری کے بارے میں پوچھیں",
+       hello: "السلام علیکم، میں ڈیڈلی ہوں۔ آپ کیسا گھر ڈھونڈ رہے ہیں؟", note: "جوابات اردو میں آئیں گے۔ لسٹنگ نمبر اور رقم انگریزی ہندسوں میں رہیں گی۔"},
+};
+const EN = {};
+const lang = () => $("lang").value;
+function applyLang() {
+  const l = lang(), dict = I18N[l] || {};
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const k = el.dataset.i18n;
+    if (!(k in EN)) EN[k] = el.textContent;
+    el.textContent = dict[k] || EN[k];
+  });
+  $("text").placeholder = dict.placeholder || "Ask about homes, areas or buying";
+  const hello = document.querySelector(".hello h3");
+  if (hello) hello.textContent = dict.hello || "Hi, I'm Deedly. What are you looking for?";
+  document.querySelector(".lang-note")?.remove();
+  if (dict.note) { const n = add("notice lang-note", esc(dict.note)); n.lang = "ur"; n.dir = "rtl"; }
+  try { localStorage.setItem("deedly-lang", l); } catch {}
+}
+$("lang").onchange = applyLang;
+try { const saved = localStorage.getItem("deedly-lang"); if (saved && I18N[saved]) $("lang").value = saved; } catch {}
+
+async function runScriptStep([, text, opts]) {
+  if (opts && opts.sold) {
+    const r = await post("/api/status", {id: opts.sold, status: "sold"});
+    if (r.ok) {
+      freshStamp = opts.sold;
+      pendingChange = opts.sold;
+      proof.replan.note = `${opts.sold} was marked sold. Watching for the agent to re-check it`;
+      drawProof();
+      add("notice", `Change event: <b>${esc(opts.sold)}</b> was just marked sold, outside the agent.`);
+      await refresh();
+      freshStamp = null;
+    }
+  }
+  send(text);
+}
+
 function showMemory(memories) {
   $("memory").innerHTML = memories.length
     ? memories.map(m => `<div class="memo"><b>${esc(m.key.replace(/_/g, " "))}:</b> ${esc(m.value)}</div>`).join("")
     : '<div class="empty">Nothing saved for this buyer.</div>';
   setCount("memory", memories.length);
-  if (memories.length) mark("long", `${memories.length} saved in SQLite, kept across sessions`);
+  if (memories.length) mark("long", `${memories.length} saved in long-term memory, kept across sessions`);
 }
 
 async function refresh() {
@@ -1580,6 +1901,7 @@ async function startSession() {
   $("sources").innerHTML = '<div class="empty">No documents retrieved yet.</div>';
   setCount("trace", 0); setCount("sources", 0);
   showOpening();
+  applyLang();
   await refresh();
 }
 
@@ -1591,6 +1913,7 @@ addEventListener("scroll", () => document.body.classList.toggle("scrolled", scro
 proof = freshProof();
 drawProof();
 showOpening();
+applyLang();
 fetch("/static/homes/photos.json?v=3")
   .then(r => r.ok ? r.json() : {})
   .catch(() => ({}))

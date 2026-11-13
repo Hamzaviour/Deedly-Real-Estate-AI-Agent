@@ -42,7 +42,7 @@ class ScriptedLLM:
 
 
 class FakeKnowledge:
-    def retrieve(self, query):
+    def retrieve(self, query, k=4):
         if "tungsten" in query:
             return []
         return [{"citation": "01_buying_process.md#2", "source": "01_buying_process.md",
@@ -237,3 +237,41 @@ def test_runaway_tool_loop_stops():
     result, agent = with_mcp(body)
     assert not result.ok and "too many" in result.text
     assert agent.messages == []
+
+
+def test_unretrieved_citations_are_removed_and_reported():
+    async def body(mcp, tools):
+        llm = ScriptedLLM(
+            tool("retrieve_knowledge", query="deposit"),
+            text("Pay at most 10 percent [01_buying_process.md#2]. Stamp duty is 3 percent "
+                 "[07_taxes_and_transfer_costs.md#2]."),
+        )
+        return await make_agent(llm, mcp, tools).chat("How much deposit and tax?")
+
+    result = with_mcp(body)
+    # The sentence resting on an unretrieved passage goes, the grounded one stays.
+    assert result.text == "Pay at most 10 percent [01_buying_process.md#2]."
+    assert result.grounding == {"cited": ["01_buying_process.md#2"],
+                                "unsupported_removed": ["07_taxes_and_transfer_costs.md#2"]}
+
+
+def test_answer_without_retrieval_keeps_no_citations():
+    async def body(mcp, tools):
+        llm = ScriptedLLM(text("Deposits are 10 percent [01_buying_process.md#2]."))
+        return await make_agent(llm, mcp, tools).chat("Deposit?")
+
+    result = with_mcp(body)
+    assert "[01_buying_process.md#2]" not in result.text
+    assert result.grounding["unsupported_removed"] == ["01_buying_process.md#2"]
+
+
+def test_grounding_drops_whole_lines_and_keeps_the_rest():
+    from realestate_agent.agent import PropertyAgent
+
+    agent = PropertyAgent(None, None, None, LongTermMemory(), "u", lambda *a: True, [])
+    agent.retrieved = {"01_buying_process.md#2"}
+    text, report = agent._check_grounding(
+        "Two things:\n- Deposit at most 10 percent [01_buying_process.md#2].\n"
+        "- Tax is 4 percent [07_x.md#1].\n\nAsk a lawyer. Also [01_buying_process.md#2] and [9_y.md#0] agree.")
+    assert text == "Two things:\n- Deposit at most 10 percent [01_buying_process.md#2].\n\nAsk a lawyer."
+    assert report["unsupported_removed"] == ["07_x.md#1", "9_y.md#0"]

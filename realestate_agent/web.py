@@ -4,9 +4,12 @@ Set RE_AGENT_PORT to use another port. Binds to localhost only. There is no logi
 """
 import asyncio
 import contextlib
+import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 import time
 import uuid
 from pathlib import Path
@@ -26,7 +29,7 @@ from .agent import PropertyAgent
 from .config import MODEL
 from .llm import make_llm, model_name
 from .mcp_client import ListingsMCPClient
-from .memory import LongTermMemory
+from .memory import make_memory
 from .rag import make_knowledge
 
 PAGE = Path(__file__).with_name("static") / "index.html"
@@ -38,7 +41,17 @@ ALLOWED_HOSTS = ["*"] if HOSTED else ["127.0.0.1", "localhost", "testserver"]
 # Public deployments spend the owner's LLM key, so each visitor gets a small chat budget.
 CHAT_LIMIT, CHAT_WINDOW_SECONDS = int(os.getenv("RE_AGENT_CHAT_LIMIT", "25")), 3600
 MAX_MESSAGE_CHARS = 4000
+# Sessions live in memory, so idle ones are dropped and the total is capped.
+SESSION_IDLE_SECONDS, MAX_SESSIONS = 1800, 200
 STATUSES = {"available", "under_offer", "sold"}
+# The buyer name comes from the browser, so on a public deployment it is scoped to a signed
+# per-browser cookie: two visitors who both type "hamza" get separate profiles, and nobody can
+# read another browser's saved preferences. Locally names are used as typed, so the same
+# profile is shared by the web app, CLI and demo. Set RE_AGENT_SECRET so cookies survive
+# restarts and work across serverless instances.
+SCOPE_USERS = HOSTED or os.getenv("RE_AGENT_SCOPE_USERS") == "1"
+SECRET = (os.getenv("RE_AGENT_SECRET") or secrets.token_hex(32)).encode()
+COOKIE = "deedly_uid"
 NO_KEY_MESSAGE = (
     "No API key is set, so the advisor cannot answer yet. Copy .env.example to .env, "
     "set ANTHROPIC_API_KEY or GROQ_API_KEY, and restart the server."
@@ -50,6 +63,19 @@ def shortlist_ids(memories: list[dict]) -> set[str]:
     return {i for m in memories if m["category"] == "shortlist" for i in re.findall(r"P-\d{3}", m["value"])}
 
 
+def sign(browser_id: str) -> str:
+    return hmac.new(SECRET, browser_id.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def browser_id(request: Request) -> str | None:
+    """The verified browser id from the signed cookie, or None."""
+    value = request.cookies.get(COOKIE, "")
+    bid, _, sig = value.partition(".")
+    if bid and re.fullmatch(r"[0-9a-f]{16}", bid) and hmac.compare_digest(sig, sign(bid)):
+        return bid
+    return None
+
+
 class ChatSession:
     """One browser conversation. Replacing it starts a new short-term memory."""
 
@@ -57,6 +83,7 @@ class ChatSession:
         self.agent = agent
         self.lock = asyncio.Lock()
         self.pending: dict[str, asyncio.Future] = {}
+        self.last_used = time.monotonic()
 
     def resolve(self, approval_id: str, approved: bool) -> bool:
         future = self.pending.get(approval_id)
@@ -65,7 +92,7 @@ class ChatSession:
         future.set_result(approved)
         return True
 
-    async def stream(self, text: str):
+    async def stream(self, text: str, language: str = "en"):
         """Yield approval requests as they occur, then the finished turn."""
         queue: asyncio.Queue = asyncio.Queue()
 
@@ -84,10 +111,15 @@ class ChatSession:
         def on_tool(step: dict) -> None:
             queue.put_nowait({"type": "tool", "step": step})
 
+        def on_text(delta: str) -> None:
+            queue.put_nowait({"type": "text", "delta": delta})
+
         async def run():
             async with self.lock:
                 self.agent.approve = approve
                 self.agent.on_tool = on_tool
+                self.agent.on_text = on_text
+                self.agent.language = language
                 return await self.agent.chat(text)
 
         task = asyncio.create_task(run())
@@ -119,7 +151,7 @@ def create_app(llm=None) -> Starlette:
         else:
             state["llm"] = make_llm()
         state["knowledge"] = make_knowledge()
-        state["memory"] = LongTermMemory()
+        state["memory"] = make_memory()
         state["sessions"] = {}
         async with ListingsMCPClient() as mcp:
             state["mcp"] = mcp
@@ -138,10 +170,23 @@ def create_app(llm=None) -> Starlette:
         hits[ip] = recent + [now]
         return True
 
+    def evict_sessions() -> None:
+        """Drop idle sessions, then the least recently used ones over the cap. Busy ones stay."""
+        sessions, now = state["sessions"], time.monotonic()
+        for user, s in list(sessions.items()):
+            if now - s.last_used > SESSION_IDLE_SECONDS and not s.lock.locked():
+                del sessions[user]
+        idle = sorted((s.last_used, u) for u, s in sessions.items() if not s.lock.locked())
+        for _, user in idle[: max(0, len(sessions) - MAX_SESSIONS + 1)]:
+            del sessions[user]
+
     def session_for(user: str) -> ChatSession:
         if user not in state["sessions"]:
+            evict_sessions()
             state["sessions"][user] = new_session(user)
-        return state["sessions"][user]
+        session = state["sessions"][user]
+        session.last_used = time.monotonic()
+        return session
 
     async def read_json(request: Request) -> dict | None:
         # Requiring JSON makes browsers send a CORS preflight for cross-site requests, which this
@@ -157,12 +202,27 @@ def create_app(llm=None) -> Starlette:
     def clean_user(value) -> str:
         return value.strip()[:64] if isinstance(value, str) and value.strip() else "demo_buyer"
 
+    def user_key(request: Request, value, bid: str | None = None) -> str | None:
+        """Storage key for the typed buyer name. None means the browser has no valid cookie."""
+        name = clean_user(value)
+        if not SCOPE_USERS:
+            return name
+        bid = bid or browser_id(request)
+        return f"{bid}:{name}" if bid else None
+
+    def no_cookie() -> JSONResponse:
+        return JSONResponse({"error": "Session expired. Reload the page."}, status_code=401)
+
     async def index(request: Request):
         return HTMLResponse(PAGE.read_text(encoding="utf-8"))
 
     async def get_state(request: Request):
-        user = clean_user(request.query_params.get("user"))
-        return JSONResponse(
+        bid = browser_id(request)
+        new_bid = None
+        if SCOPE_USERS and bid is None:
+            bid = new_bid = secrets.token_hex(8)
+        user = user_key(request, request.query_params.get("user"), bid)
+        response = JSONResponse(
             {
                 "llm_ready": state["llm"] is not None,
                 "model": model_name(state["llm"], MODEL),
@@ -173,6 +233,17 @@ def create_app(llm=None) -> Starlette:
                 "properties": properties.search(include_unavailable=True),
             }
         )
+        if new_bid:
+            response.set_cookie(COOKIE, f"{new_bid}.{sign(new_bid)}", max_age=180 * 86400,
+                                httponly=True, samesite="strict", secure=HOSTED)
+        return response
+
+    async def passage(request: Request):
+        """The full text behind a citation, so the buyer can check what an answer rests on."""
+        found = state["knowledge"].passage(request.query_params.get("id", ""))
+        if found is None:
+            return JSONResponse({"error": "No passage with that citation."}, status_code=404)
+        return JSONResponse(found)
 
     async def chat(request: Request):
         body = await read_json(request)
@@ -184,12 +255,16 @@ def create_app(llm=None) -> Starlette:
         if HOSTED and not allow_chat(request):
             return JSONResponse({"error": "Chat limit reached for now. Please try again later."},
                                 status_code=429)
-        session = session_for(clean_user(body.get("user")))
+        user = user_key(request, body.get("user"))
+        if user is None:
+            return no_cookie()
+        session = session_for(user)
         if session.lock.locked():
             return JSONResponse({"error": "Still working on your last message."}, status_code=409)
 
         async def lines():
-            async for event in session.stream(text.strip()):
+            language = "ur" if body.get("lang") == "ur" else "en"
+            async for event in session.stream(text.strip(), language):
                 yield json.dumps(event) + "\n"
 
         return StreamingResponse(lines(), media_type="application/x-ndjson")
@@ -198,7 +273,7 @@ def create_app(llm=None) -> Starlette:
         body = await read_json(request)
         if not body or not isinstance(body.get("approved"), bool):
             return JSONResponse({"error": "Invalid request."}, status_code=400)
-        session = state["sessions"].get(clean_user(body.get("user")))
+        session = state["sessions"].get(user_key(request, body.get("user")) or "")
         if session is None or not session.resolve(str(body.get("id")), body["approved"]):
             return JSONResponse({"error": "That approval has expired."}, status_code=404)
         return JSONResponse({"ok": True})
@@ -207,7 +282,9 @@ def create_app(llm=None) -> Starlette:
         body = await read_json(request)
         if body is None:
             return JSONResponse({"error": "Invalid request."}, status_code=400)
-        user = clean_user(body.get("user"))
+        user = user_key(request, body.get("user"))
+        if user is None:
+            return no_cookie()
         current = state["sessions"].get(user)
         if current and current.lock.locked():
             return JSONResponse({"error": "Still working on your last message."}, status_code=409)
@@ -225,7 +302,9 @@ def create_app(llm=None) -> Starlette:
             properties.get(home_id)
         except ValueError as e:
             return JSONResponse({"error": str(e)}, status_code=404)
-        user = clean_user(body.get("user"))
+        user = user_key(request, body.get("user"))
+        if user is None:
+            return no_cookie()
         ids = shortlist_ids(state["memory"].load(user))
         ids = ids | {home_id} if body["on"] else ids - {home_id}
         memory = state["memory"]
@@ -247,10 +326,11 @@ def create_app(llm=None) -> Starlette:
             return JSONResponse({"error": str(e)}, status_code=404)
         return JSONResponse({"ok": True})
 
-    return Starlette(
+    app = Starlette(
         routes=[
             Route("/", index),
             Route("/api/state", get_state),
+            Route("/api/passage", passage),
             Route("/api/chat", chat, methods=["POST"]),
             Route("/api/approve", approve, methods=["POST"]),
             Route("/api/reset", reset_session, methods=["POST"]),
@@ -264,6 +344,8 @@ def create_app(llm=None) -> Starlette:
             Middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
         ],
     )
+    app.state.deedly = state  # For tests and debugging.
+    return app
 
 
 if __name__ == "__main__":

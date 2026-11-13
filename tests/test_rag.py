@@ -25,6 +25,10 @@ def test_ingests_at_least_five_documents(kb):
         ("How do I check for damp and cracks when inspecting a house?", "04_inspection_guide.md"),
         ("Does Allama Iqbal Town have waterlogging in the monsoon?", "05_neighbourhood_guide.md"),
         ("Is a viewing request a guaranteed appointment?", "06_advisory_policy.md"),
+        ("Who pays stamp duty and advance tax at transfer?", "07_taxes_and_transfer_costs.md"),
+        ("Is the housing society approved by the LDA?", "08_housing_societies_and_approvals.md"),
+        ("How many marla are in one kanal?", "09_measurements_marla_kanal.md"),
+        ("What is a fard and an intiqal?", "10_documents_glossary.md"),
     ],
 )
 def test_top_result_comes_from_expected_document(kb, query, expected):
@@ -75,3 +79,17 @@ def test_lexical_retriever_ignores_unrelated_queries(query):
     from realestate_agent.rag import LexicalKnowledgeBase
 
     assert LexicalKnowledgeBase().retrieve(query) == []
+
+
+def test_hybrid_rejects_off_topic_even_with_shared_words(tmp_path_factory):
+    from realestate_agent.rag import HybridKnowledgeBase
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("RE_AGENT_RUNTIME", str(tmp_path_factory.mktemp("hybrid")))
+        hybrid = HybridKnowledgeBase()
+    assert hybrid.retrieve("What is the capital of France?") == []
+    hits = hybrid.retrieve("How many square feet is a kanal?")
+    assert hits[0]["source"] == "09_measurements_marla_kanal.md"
+    assert set(hits[0]["matched_by"]) == {"dense", "lexical"}
+    assert hybrid.passage(hits[0]["citation"])["text"] == hits[0]["text"]
+    assert hybrid.passage("nope.md#0") is None

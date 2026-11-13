@@ -1,4 +1,7 @@
-"""Long-term buyer memory in SQLite. Short-term memory is the agent's in-session message list."""
+"""Long-term buyer memory in SQLite, or Postgres when DATABASE_URL is set.
+
+Short-term memory is the agent's in-session message list."""
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,3 +54,61 @@ class LongTermMemory:
                 (user_id,),
             ).fetchall()
         return [dict(zip(("key", "value", "category", "updated_at"), r)) for r in rows]
+
+
+class PostgresMemory:
+    """The same store in Postgres (for example Neon), so hosted memory survives cold starts.
+
+    Serverless hosts wipe local files between instances, which would erase SQLite memories.
+    Used when DATABASE_URL is set. Needs the psycopg package.
+    """
+
+    def __init__(self, url: str):
+        import psycopg
+
+        self._psycopg = psycopg
+        self.url = url
+        with self._connect() as conn:
+            conn.execute(
+                """CREATE TABLE IF NOT EXISTS memories (
+                    user_id TEXT, key TEXT, value TEXT, category TEXT, updated_at TEXT,
+                    PRIMARY KEY (user_id, key))"""
+            )
+
+    def _connect(self):
+        return self._psycopg.connect(self.url, autocommit=True)
+
+    def save(self, user_id: str, key: str, value: str, category: str = "preference") -> None:
+        if category not in CATEGORIES:
+            raise ValueError(f"Category must be one of {sorted(CATEGORIES)}")
+        if not key.strip() or not value.strip():
+            raise ValueError("Key and value must not be empty")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._connect() as conn:
+            conn.execute(
+                """INSERT INTO memories VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (user_id, key) DO UPDATE SET
+                value = excluded.value, category = excluded.category,
+                updated_at = excluded.updated_at""",
+                (user_id, key.strip(), value.strip(), category, now),
+            )
+
+    def forget(self, user_id: str, key: str) -> bool:
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM memories WHERE user_id = %s AND key = %s", (user_id, key))
+            return cur.rowcount > 0
+
+    def load(self, user_id: str) -> list[dict]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT key, value, category, updated_at FROM memories "
+                "WHERE user_id = %s ORDER BY category, key",
+                (user_id,),
+            ).fetchall()
+        return [dict(zip(("key", "value", "category", "updated_at"), r)) for r in rows]
+
+
+def make_memory():
+    """Postgres when DATABASE_URL is set, otherwise the local SQLite file."""
+    url = os.getenv("DATABASE_URL", "").strip()
+    return PostgresMemory(url) if url else LongTermMemory()

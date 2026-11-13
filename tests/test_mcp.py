@@ -21,6 +21,8 @@ def test_lists_expected_tools_in_stable_order():
     names = [t["name"] for t in tools]
     assert names == sorted(names)
     assert set(names) == {
+        "affordability_check",
+        "area_price_stats",
         "compare_properties",
         "estimate_monthly_payment",
         "get_property",
@@ -46,3 +48,17 @@ def test_tool_failure_is_flagged_as_error():
     text, is_error = run(body)
     assert is_error
     assert "P-999" in text
+
+
+def test_area_price_stats_and_affordability_over_mcp():
+    async def body(c):
+        stats = await c.call_tool("area_price_stats", {"area": "DHA Phase 6"})
+        afford = await c.call_tool("affordability_check",
+                                   {"monthly_income_pkr": 500000, "down_payment_pkr": 8000000})
+        return stats, afford
+
+    (stats, err1), (afford, err2) = run(body)
+    assert not err1 and not err2
+    row = json.loads(stats)[0]
+    assert row["area"] == "DHA Phase 6" and row["median_price_per_marla"] > 0
+    assert json.loads(afford)["max_price_pkr"] > 8000000

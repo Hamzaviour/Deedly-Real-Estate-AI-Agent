@@ -3,7 +3,7 @@
   "functions": {
     "app.py": {
       "maxDuration": 300,
-      "excludeFiles": "{tests/**,docs/**,evidence/**,runtime/**,demo.py,lahore_house_images.json}"
+      "excludeFiles": "{tests/**,docs/**,evidence/**,evals/**,scripts/**,runtime/**,demo.py,lahore_house_images.json}"
     }
   }
 }

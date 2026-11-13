@@ -71,3 +71,58 @@ def test_viewing_blocked_after_change_event():
     properties.set_status("P-103", "sold")
     with pytest.raises(ValueError, match="sold"):
         properties.request_viewing("P-103", "Hamza", "2026-11-20")
+
+
+def test_generated_listings_cover_more_areas_with_coordinates():
+    homes = properties.search(include_unavailable=True)
+    assert len(homes) >= 60
+    assert {"DHA Phase 6", "Bahria Town", "Wapda Town"} <= {h["area"] for h in homes}
+    assert all(h["lat"] and h["lng"] and h["marla"] > 0 for h in homes)
+
+
+def test_area_price_stats():
+    stats = {s["area"]: s for s in properties.area_price_stats()}
+    assert len(stats) == 14
+    gulberg = stats["Gulberg"]
+    assert gulberg["min_price_per_sqft"] <= gulberg["median_price_per_sqft"] <= gulberg["max_price_per_sqft"]
+    # Per-sqft median is rounded before display, so allow up to one rupee per sqft of drift.
+    assert abs(gulberg["median_price_per_marla"] - gulberg["median_price_per_sqft"] * 225) <= 225
+    with pytest.raises(ValueError):
+        properties.area_price_stats("Atlantis")
+
+
+def test_affordability_uses_35_percent_rule():
+    out = properties.affordability(300_000, 5_000_000)
+    assert out["monthly_payment_pkr"] == 105_000
+    # The loan that 105,000 a month repays matches the payment calculator.
+    loan_check = properties.monthly_payment(out["max_loan_pkr"] + 1, 0, 14, 20)
+    assert abs(loan_check["monthly_payment_pkr"] - 105_000) < 200
+    assert properties.affordability(100_000, 1_000_000, existing_debt_pkr=40_000)["max_loan_pkr"] == 0
+
+
+def test_plot_size_filters_cover_kanal_houses_and_farmhouses():
+    kanal = properties.search(min_marla=19.5, max_marla=20.5, include_unavailable=True)
+    assert kanal and all(19.5 <= h["marla"] <= 20.5 for h in kanal)
+    big = properties.search(min_marla=100.5, include_unavailable=True)
+    assert any(h["marla"] >= 200 for h in big)  # 10 kanal farmhouses exist.
+    small = properties.search(max_marla=5.5)
+    assert small and all(h["marla"] <= 5.5 for h in small)
+
+
+def test_farmhouses_sit_on_the_farm_belts():
+    farms = properties.search(property_type="farmhouse", include_unavailable=True)
+    assert len(farms) >= 10
+    assert {h["area"] for h in farms} <= {"Bedian Road", "Barki Road", "Raiwind Road"}
+    assert all(h["marla"] >= 40 for h in farms)  # At least 2 kanal.
+
+
+def test_generated_listings_have_pakistani_photos_with_attribution():
+    import json
+    from pathlib import Path
+    photos = json.loads((Path(__file__).resolve().parent.parent / "realestate_agent" / "static" / "homes"
+                         / "photos.json").read_text(encoding="utf-8"))
+    homes = properties.search(include_unavailable=True)
+    assert all(h["id"] in photos for h in homes)
+    generated = [p for h in homes if int(h["id"][2:]) >= 113 for p in photos[h["id"]]]
+    pk = [p for p in generated if p["src"].startswith("/static/homes/pk/")]
+    assert pk and all(p["attribution"] and p["license_url"] for p in pk)

@@ -1,6 +1,8 @@
 python -m pytest tests -q
 
-68 passed in 316.19s (0:05:16)
+89 passed, 1 skipped in 213.97s (0:03:33)
 
-Run on 2026-11-08, Python 3.14, Windows 11. No API key needed: the LLM is scripted;
-MCP, SQLite, embeddings, Chroma and the BM25 retriever are real.
+Run on 2026-11-09, Python 3.14, Windows 11. No API key needed: the LLM is scripted;
+MCP, SQLite, embeddings, Chroma and the BM25 and hybrid retrievers are real.
+The skipped test is the Postgres memory round trip, which runs when TEST_DATABASE_URL
+is set (CI provides a Postgres service).

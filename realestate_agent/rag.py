@@ -1,13 +1,20 @@
 """RAG pipeline: chunk Markdown documents, embed them, store in Chroma, retrieve with sources.
 
-Two retrievers share one interface (`retrieve(query, k)` returning passages with citations):
+Three retrievers share one interface (`retrieve(query, k)` returning passages with citations,
+and `passage(citation)` returning one chunk by id):
 
-- KnowledgeBase: local embeddings (fastembed) in a Chroma index. The default.
+- HybridKnowledgeBase: embeddings and BM25 together, merged by reciprocal rank fusion. The
+  default when embeddings are installed. Meaning-based and exact-term matches both count.
+- KnowledgeBase: local embeddings (fastembed) in a Chroma index.
 - LexicalKnowledgeBase: BM25 keyword ranking in pure Python, for hosts where the embedding
   model and Chroma are too heavy, such as serverless deployments.
 
-Choose with RE_AGENT_RAG=embeddings|lexical. Unset, embeddings are used when installed.
+Every retriever applies a relevance floor, so an empty result means "the documents do not cover
+this" and the agent must say so instead of answering from general knowledge.
+
+Choose with RE_AGENT_RAG=hybrid|embeddings|lexical. Unset, hybrid is used when installed.
 """
+import hashlib
 import math
 import os
 import re
@@ -55,8 +62,17 @@ class KnowledgeBase:
         self._collection = client.get_or_create_collection(
             COLLECTION, metadata={"hnsw:space": "cosine"}
         )
-        if self._collection.count() == 0:
+        self._fingerprint_file = runtime_dir() / "chroma" / "knowledge.sha1"
+        stored = self._fingerprint_file.read_text() if self._fingerprint_file.exists() else ""
+        if self._collection.count() == 0 or stored != self._fingerprint():
             self.ingest()
+
+    def _fingerprint(self) -> str:
+        """Hash of every document, so an edited knowledge folder triggers a re-index."""
+        digest = hashlib.sha1()
+        for path in sorted(self.knowledge_dir.glob("*.md")):
+            digest.update(path.name.encode() + path.read_bytes())
+        return digest.hexdigest()
 
     def ingest(self) -> dict:
         """Rebuild the index from every document in the knowledge folder."""
@@ -75,7 +91,16 @@ class KnowledgeBase:
             raise ValueError(f"No documents found in {self.knowledge_dir}")
         embeddings = [e.tolist() for e in self._embedder.embed(texts)]
         self._collection.add(ids=ids, documents=texts, metadatas=metadatas, embeddings=embeddings)
+        self._fingerprint_file.write_text(self._fingerprint())
         return {"documents": len(files), "chunks": len(ids)}
+
+    def passage(self, citation: str) -> dict | None:
+        found = self._collection.get(ids=[citation])
+        if not found["ids"]:
+            return None
+        meta = found["metadatas"][0]
+        return {"citation": citation, "source": meta["source"], "section": meta["section"],
+                "text": found["documents"][0]}
 
     def retrieve(self, query: str, k: int = 4) -> list[dict]:
         """Return the top chunks above the relevance floor. Empty means no grounded evidence."""
@@ -134,6 +159,13 @@ class LexicalKnowledgeBase:
         self.idf = {t: math.log(1 + (n - f + 0.5) / (f + 0.5)) for t, f in df.items()}
         return {"documents": len(files), "chunks": n}
 
+    def passage(self, citation: str) -> dict | None:
+        for c in self.chunks:
+            if c["id"] == citation:
+                return {"citation": c["id"], "source": c["source"], "section": c["section"],
+                        "text": c["text"]}
+        return None
+
     def retrieve(self, query: str, k: int = 4) -> list[dict]:
         q = set(_terms(query))
         if not q:
@@ -161,13 +193,52 @@ class LexicalKnowledgeBase:
         return results
 
 
+RRF_K = 60  # Standard reciprocal rank fusion constant.
+
+
+class HybridKnowledgeBase:
+    """Embeddings plus BM25, fused by rank.
+
+    The semantic retriever decides whether the documents cover the question at all: a shared
+    word alone (such as "capital" in "capital of France" and "capital gains") is not enough.
+    When the question is covered, BM25 adds exact-term matches and both rankings are fused."""
+
+    def __init__(self, knowledge_dir: Path = KNOWLEDGE_DIR):
+        self.dense = KnowledgeBase(knowledge_dir)
+        self.lexical = LexicalKnowledgeBase(knowledge_dir)
+
+    def ingest(self) -> dict:
+        self.lexical.ingest()
+        return self.dense.ingest()
+
+    def passage(self, citation: str) -> dict | None:
+        return self.lexical.passage(citation)
+
+    def retrieve(self, query: str, k: int = 4) -> list[dict]:
+        dense = self.dense.retrieve(query, k * 2)
+        if not dense:
+            return []  # Not covered by the documents.
+        fused: dict[str, dict] = {}
+        for name, hits in (("dense", dense), ("lexical", self.lexical.retrieve(query, k * 2))):
+            for rank, hit in enumerate(hits):
+                entry = fused.setdefault(hit["citation"], {**hit, "score": 0.0, "matched_by": []})
+                entry["score"] += 1 / (RRF_K + rank + 1)
+                entry["matched_by"].append(name)
+                if name == "dense":
+                    entry["similarity"] = hit["similarity"]  # Report the semantic score.
+        ranked = sorted(fused.values(), key=lambda h: -h["score"])[:k]
+        for h in ranked:
+            h["score"] = round(h["score"], 4)
+        return ranked
+
+
 def make_knowledge():
     """Pick the retriever from RE_AGENT_RAG, falling back to BM25 if embeddings are unavailable."""
     mode = os.getenv("RE_AGENT_RAG", "lexical" if os.getenv("VERCEL") else "").strip().lower()
     if mode != "lexical":
         try:
-            return KnowledgeBase()
+            return KnowledgeBase() if mode == "embeddings" else HybridKnowledgeBase()
         except ImportError:
-            if mode == "embeddings":
+            if mode in ("embeddings", "hybrid"):
                 raise
     return LexicalKnowledgeBase()

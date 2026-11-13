@@ -25,7 +25,7 @@ def test_page_and_state_load_without_key(monkeypatch):
         assert c.get("/static/brand/deedly-mark.svg").status_code == 200
         state = c.get("/api/state").json()
         assert state["llm_ready"] is False
-        assert len(state["properties"]) == 12
+        assert len(state["properties"]) == 180
         assert "search_properties" in state["mcp_tools"]
         r = c.post("/api/chat", json={"message": "hi"})
         assert r.status_code == 503 and "API key" in r.json()["error"]
@@ -131,3 +131,55 @@ def test_shortlist_hearts_write_long_term_memory():
         assert c.post("/api/shortlist", json={"id": "P-103"}).status_code == 400
         add("P-110", False)
         assert c.get("/api/state?user=sl1").json()["shortlist"] == []
+
+
+def test_passage_endpoint_returns_cited_text():
+    with client(ScriptedLLM()) as c:
+        r = c.get("/api/passage", params={"id": "09_measurements_marla_kanal.md#2"})
+        assert r.status_code == 200 and "4,500 square feet" in r.json()["text"]
+        assert c.get("/api/passage", params={"id": "missing.md#0"}).status_code == 404
+
+
+def test_hosted_mode_scopes_buyer_names_to_a_signed_cookie(monkeypatch):
+    from realestate_agent import web
+
+    monkeypatch.setattr(web, "SCOPE_USERS", True)
+    llm = ScriptedLLM(
+        tool("save_preference", key="budget_pkr", value="27000000", category="constraint"),
+        text("Saved."),
+    )
+    with client(llm) as a, client(ScriptedLLM()) as b:
+        assert a.post("/api/chat", json={"user": "hamza", "message": "x"}).status_code == 401
+        a.get("/api/state?user=hamza")  # Issues the signed cookie.
+        assert web.COOKIE in a.cookies
+        a.post("/api/chat", json={"user": "hamza", "message": "budget 27M"})
+        assert a.get("/api/state?user=hamza").json()["memories"][0]["value"] == "27000000"
+        # Another browser typing the same name sees nothing, and a forged cookie is rejected.
+        assert b.get("/api/state?user=hamza").json()["memories"] == []
+        b.cookies.set(web.COOKIE, "0123456789abcdef.forged")
+        assert b.post("/api/reset", json={"user": "hamza"}).status_code == 401
+
+
+def test_sessions_are_capped_and_idle_ones_evicted(monkeypatch):
+    from realestate_agent import web
+
+    monkeypatch.setattr(web, "MAX_SESSIONS", 3)
+    llm = ScriptedLLM(*[text(str(i)) for i in range(6)])
+    with client(llm) as c:
+        for i in range(5):
+            c.post("/api/chat", json={"user": f"u{i}", "message": "hi"})
+        sessions = c.app.state.deedly["sessions"]
+        assert set(sessions) == {"u2", "u3", "u4"}  # Least recently used went first.
+        for s in sessions.values():
+            s.last_used -= web.SESSION_IDLE_SECONDS + 1
+        c.post("/api/chat", json={"user": "new", "message": "hi"})
+        assert set(sessions) == {"new"}
+
+
+def test_urdu_choice_adds_reply_language_to_the_system_prompt():
+    llm = ScriptedLLM(text("جی"), text("ok"))
+    with client(llm) as c:
+        c.post("/api/chat", json={"user": "ur1", "message": "salaam", "lang": "ur"})
+        c.post("/api/chat", json={"user": "ur1", "message": "hello"})
+    first, second = (" ".join(b["text"] for b in call["system"]) for call in llm.calls)
+    assert "Urdu" in first and "Urdu" not in second

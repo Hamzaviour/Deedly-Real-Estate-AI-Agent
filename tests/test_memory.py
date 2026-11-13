@@ -34,3 +34,29 @@ def test_forget():
 def test_rejects_invalid(key, value, cat):
     with pytest.raises(ValueError):
         LongTermMemory().save("u1", key, value, cat)
+
+
+def test_factory_uses_sqlite_without_database_url(monkeypatch):
+    from realestate_agent.memory import LongTermMemory, make_memory
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert isinstance(make_memory(), LongTermMemory)
+
+
+def test_postgres_memory_round_trip():
+    """Runs only when TEST_DATABASE_URL points at a disposable Postgres database."""
+    import os
+    import uuid
+
+    import pytest
+
+    from realestate_agent.memory import PostgresMemory
+
+    url = os.getenv("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_DATABASE_URL not set")
+    m, user = PostgresMemory(url), f"test-{uuid.uuid4().hex}"
+    m.save(user, "budget_pkr", "27000000", "constraint")
+    m.save(user, "budget_pkr", "30000000", "constraint")
+    assert [r["value"] for r in m.load(user)] == ["30000000"]
+    assert m.forget(user, "budget_pkr") and m.load(user) == []

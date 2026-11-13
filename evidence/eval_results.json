@@ -1,0 +1,460 @@
+{
+ "generated": "2026-11-09 13:20 UTC",
+ "retrieval": {
+  "retriever": "HybridKnowledgeBase",
+  "covered_questions": 30,
+  "off_topic_questions": 6,
+  "hit_at_1": 0.9,
+  "hit_at_4": 1.0,
+  "mrr": 0.944,
+  "off_topic_rejection": 1.0,
+  "rows": [
+   {
+    "q": "How much deposit should I pay when buying?",
+    "expected": [
+     "01_buying_process.md"
+    ],
+    "got": [
+     "01_buying_process.md",
+     "01_buying_process.md",
+     "01_buying_process.md",
+     "03_financing_affordability.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "How long does a financed purchase take from offer to transfer?",
+    "expected": [
+     "01_buying_process.md"
+    ],
+    "got": [
+     "01_buying_process.md",
+     "01_buying_process.md",
+     "01_buying_process.md",
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What conditions can I put in an offer?",
+    "expected": [
+     "01_buying_process.md"
+    ],
+    "got": [
+     "01_buying_process.md",
+     "01_buying_process.md",
+     "03_financing_affordability.md",
+     "04_inspection_guide.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "The home I wanted got sold, what should I do?",
+    "expected": [
+     "01_buying_process.md"
+    ],
+    "got": [
+     "06_advisory_policy.md",
+     "01_buying_process.md",
+     "02_title_verification.md",
+     "03_financing_affordability.md"
+    ],
+    "rank": 2,
+    "pass": false
+   },
+   {
+    "q": "Which documents should the seller show me for title?",
+    "expected": [
+     "02_title_verification.md"
+    ],
+    "got": [
+     "02_title_verification.md",
+     "02_title_verification.md",
+     "02_title_verification.md",
+     "02_title_verification.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What are warning signs of a fraudulent seller?",
+    "expected": [
+     "02_title_verification.md"
+    ],
+    "got": [
+     "02_title_verification.md",
+     "10_documents_glossary.md",
+     "02_title_verification.md",
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What extra papers do I need when buying an apartment?",
+    "expected": [
+     "02_title_verification.md"
+    ],
+    "got": [
+     "03_financing_affordability.md",
+     "01_buying_process.md",
+     "02_title_verification.md",
+     "02_title_verification.md"
+    ],
+    "rank": 3,
+    "pass": false
+   },
+   {
+    "q": "What share of my salary can go to the loan payment?",
+    "expected": [
+     "03_financing_affordability.md"
+    ],
+    "got": [
+     "03_financing_affordability.md",
+     "03_financing_affordability.md",
+     "06_advisory_policy.md",
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What interest rate should I assume for planning?",
+    "expected": [
+     "03_financing_affordability.md"
+    ],
+    "got": [
+     "03_financing_affordability.md",
+     "03_financing_affordability.md",
+     "03_financing_affordability.md",
+     "06_advisory_policy.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Will a bank lend on a 35 year old house?",
+    "expected": [
+     "03_financing_affordability.md"
+    ],
+    "got": [
+     "03_financing_affordability.md",
+     "03_financing_affordability.md",
+     "08_housing_societies_and_approvals.md",
+     "04_inspection_guide.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "How do I check for damp and cracks?",
+    "expected": [
+     "04_inspection_guide.md"
+    ],
+    "got": [
+     "04_inspection_guide.md",
+     "04_inspection_guide.md",
+     "04_inspection_guide.md",
+     "05_neighbourhood_guide.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "How much contingency should I add to renovation quotes?",
+    "expected": [
+     "04_inspection_guide.md"
+    ],
+    "got": [
+     "04_inspection_guide.md",
+     "04_inspection_guide.md",
+     "03_financing_affordability.md",
+     "02_title_verification.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Do houses built before 1990 have old wiring?",
+    "expected": [
+     "04_inspection_guide.md"
+    ],
+    "got": [
+     "04_inspection_guide.md",
+     "03_financing_affordability.md",
+     "04_inspection_guide.md",
+     "08_housing_societies_and_approvals.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Is Gulberg on the Metro Bus route?",
+    "expected": [
+     "05_neighbourhood_guide.md"
+    ],
+    "got": [
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Does Allama Iqbal Town flood in the monsoon?",
+    "expected": [
+     "05_neighbourhood_guide.md"
+    ],
+    "got": [
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "How long is the commute from Bahria Town?",
+    "expected": [
+     "05_neighbourhood_guide.md"
+    ],
+    "got": [
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What is DHA Phase 6 like to live in?",
+    "expected": [
+     "05_neighbourhood_guide.md"
+    ],
+    "got": [
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md",
+     "05_neighbourhood_guide.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Can you steer me to an area based on my religion?",
+    "expected": [
+     "06_advisory_policy.md"
+    ],
+    "got": [
+     "06_advisory_policy.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Is a viewing request a confirmed appointment?",
+    "expected": [
+     "06_advisory_policy.md"
+    ],
+    "got": [
+     "06_advisory_policy.md",
+     "02_title_verification.md",
+     "06_advisory_policy.md",
+     "02_title_verification.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Can you guarantee this home will go up in value?",
+    "expected": [
+     "06_advisory_policy.md"
+    ],
+    "got": [
+     "04_inspection_guide.md",
+     "06_advisory_policy.md",
+     "03_financing_affordability.md",
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "rank": 2,
+    "pass": false
+   },
+   {
+    "q": "Who pays stamp duty and advance tax on a property transfer?",
+    "expected": [
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "got": [
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Does being a non-filer change the tax I pay when buying?",
+    "expected": [
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "got": [
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md",
+     "01_buying_process.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Can I declare a lower price to save tax?",
+    "expected": [
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "got": [
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md",
+     "07_taxes_and_transfer_costs.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "How do I know if a housing society is LDA approved?",
+    "expected": [
+     "08_housing_societies_and_approvals.md"
+    ],
+    "got": [
+     "08_housing_societies_and_approvals.md",
+     "02_title_verification.md",
+     "08_housing_societies_and_approvals.md",
+     "08_housing_societies_and_approvals.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What is the difference between a plot file and possession?",
+    "expected": [
+     "08_housing_societies_and_approvals.md"
+    ],
+    "got": [
+     "08_housing_societies_and_approvals.md",
+     "09_measurements_marla_kanal.md",
+     "10_documents_glossary.md",
+     "10_documents_glossary.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "How many square feet is 10 marla?",
+    "expected": [
+     "09_measurements_marla_kanal.md"
+    ],
+    "got": [
+     "09_measurements_marla_kanal.md",
+     "09_measurements_marla_kanal.md",
+     "09_measurements_marla_kanal.md",
+     "09_measurements_marla_kanal.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "How many marla make a kanal?",
+    "expected": [
+     "09_measurements_marla_kanal.md"
+    ],
+    "got": [
+     "09_measurements_marla_kanal.md",
+     "09_measurements_marla_kanal.md",
+     "09_measurements_marla_kanal.md",
+     "09_measurements_marla_kanal.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What is a fard?",
+    "expected": [
+     "10_documents_glossary.md"
+    ],
+    "got": [
+     "10_documents_glossary.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What does intiqal mean?",
+    "expected": [
+     "10_documents_glossary.md"
+    ],
+    "got": [
+     "10_documents_glossary.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "Is buying through a power of attorney risky?",
+    "expected": [
+     "02_title_verification.md",
+     "10_documents_glossary.md"
+    ],
+    "got": [
+     "10_documents_glossary.md",
+     "02_title_verification.md",
+     "01_buying_process.md",
+     "06_advisory_policy.md"
+    ],
+    "rank": 1,
+    "pass": true
+   },
+   {
+    "q": "What is the capital of France?",
+    "expected": null,
+    "got": [],
+    "pass": true
+   },
+   {
+    "q": "Recommend a good cricket bat",
+    "expected": null,
+    "got": [],
+    "pass": true
+   },
+   {
+    "q": "How do I bake a chocolate cake?",
+    "expected": null,
+    "got": [],
+    "pass": true
+   },
+   {
+    "q": "Who won the football world cup?",
+    "expected": null,
+    "got": [],
+    "pass": true
+   },
+   {
+    "q": "Write me a poem about the sea",
+    "expected": null,
+    "got": [],
+    "pass": true
+   },
+   {
+    "q": "What is the best programming language?",
+    "expected": null,
+    "got": [],
+    "pass": true
+   }
+  ]
+ },
+ "agent": null
+}

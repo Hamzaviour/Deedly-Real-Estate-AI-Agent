@@ -80,6 +80,8 @@ def pick_groq_model(available: list[str]) -> str | None:
 
 
 class GroqLLM:
+    streams_text = True
+
     def __init__(self, api_key: str | None = None, model: str | None = None):
         from openai import AsyncOpenAI
 
@@ -101,7 +103,11 @@ class GroqLLM:
         if chosen:
             self.model = chosen
 
-    async def _create(self, *, system, tools, messages, max_tokens, **_ignored):
+    async def stream_create(self, *, on_text, **kwargs):
+        """Like create, but calls on_text with each piece of answer text as it arrives."""
+        return await self._create(on_text=on_text, **kwargs)
+
+    async def _create(self, *, system, tools, messages, max_tokens, on_text=None, **_ignored):
         import openai
 
         if not self._resolved:
@@ -115,8 +121,12 @@ class GroqLLM:
         )
         for attempt in range(2):
             try:
-                response = await self._client.chat.completions.create(model=self.model, **request)
-                return from_openai_response(response)
+                if on_text is None:
+                    response = await self._client.chat.completions.create(model=self.model, **request)
+                    return from_openai_response(response)
+                stream = await self._client.chat.completions.create(
+                    model=self.model, stream=True, **request)
+                return await collect_openai_stream(stream, on_text)
             except openai.AuthenticationError:
                 raise LLMServiceError("The Groq API key was rejected. Check GROQ_API_KEY.")
             except openai.RateLimitError:
@@ -203,6 +213,32 @@ def to_openai_messages(system, messages: list) -> list[dict]:
                 elif _field(b, "type") == "text":
                     out.append({"role": "user", "content": _field(b, "text")})
     return out
+
+
+async def collect_openai_stream(stream, on_text):
+    """Rebuild a full completion from streamed chunks, forwarding text as it arrives."""
+    text, calls, finish = [], {}, None
+    async for chunk in stream:
+        if not chunk.choices:
+            continue
+        choice = chunk.choices[0]
+        delta = choice.delta
+        if delta.content:
+            text.append(delta.content)
+            on_text(delta.content)
+        for tc in delta.tool_calls or []:
+            slot = calls.setdefault(tc.index, {"id": None, "name": "", "arguments": ""})
+            if tc.id:
+                slot["id"] = tc.id
+            if tc.function and tc.function.name:
+                slot["name"] += tc.function.name
+            if tc.function and tc.function.arguments:
+                slot["arguments"] += tc.function.arguments
+        finish = choice.finish_reason or finish
+    message = NS(content="".join(text) or None, tool_calls=[
+        NS(id=c["id"], function=NS(name=c["name"], arguments=c["arguments"]))
+        for _, c in sorted(calls.items())] or None)
+    return from_openai_response(NS(choices=[NS(message=message, finish_reason=finish)]))
 
 
 def from_openai_response(response):

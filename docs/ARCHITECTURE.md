@@ -16,9 +16,13 @@
 
 **Short-term memory.** The message list held by one `PropertyAgent` instance. It resolves phrases like "the cheaper one" and is gone when the session ends.
 
-**Long-term memory.** A SQLite table keyed by user and memory name. The model saves lasting facts with `save_preference`, and saving under the same key replaces the old value. A new session loads the rows into the system prompt.
+**Long-term memory.** A table keyed by user and memory name, in SQLite locally or Postgres when `DATABASE_URL` is set (serverless hosts wipe local files between instances). The model saves lasting facts with `save_preference`, and saving under the same key replaces the old value. A new session loads the rows into the system prompt.
 
-**RAG.** Six Markdown documents are split by section and then by size (800 characters with 100 overlap), embedded locally with `BAAI/bge-small-en-v1.5`, and stored in Chroma using cosine distance. Results below a similarity of 0.6 are dropped. On-topic test questions measured 0.76 to 0.83 and unrelated ones 0.48 to 0.55. A question that is on theme but not covered can still pass this floor (a tax question scored 0.69), so the system prompt also tells the model to check that passages actually answer the question.
+**RAG.** Ten Markdown documents (buying process, title, financing, inspection, neighbourhoods, advisory policy, taxes and transfer costs, housing societies and approvals, marla and kanal, documents glossary) are split by section and then by size (800 characters with 100 overlap), embedded locally with `BAAI/bge-small-en-v1.5`, and stored in Chroma using cosine distance. Results below a similarity of 0.6 are dropped. On-topic test questions measured 0.76 to 0.83 and unrelated ones 0.48 to 0.55. A question that is on theme but not covered can still pass this floor (a tax question scored 0.69), so the system prompt also tells the model to check that passages actually answer the question.
+
+The default retriever is **hybrid**: the embedding retriever and a BM25 keyword retriever each rank the chunks, and the two rankings are merged by reciprocal rank fusion. Embeddings decide whether the documents cover the question at all, so a single shared word ("capital" in "capital of France" and "capital gains") cannot pull in a passage. BM25 adds exact-term matches such as *fard*, *LDA* or *kanal*. The index re-builds itself when any document changes.
+
+**Grounding check.** After the model answers, every citation is compared with the passages retrieved in the session. A sentence that cites a passage that was never retrieved is removed and reported to the buyer, so every citation left in an answer can be opened (`/api/passage`) and read in full.
 
 **RAG versus long-term memory.** RAG holds shared reference knowledge written in advance and is read-only to the agent. Long-term memory holds facts about one buyer, written by the agent during conversations. They use separate stores for that reason.
 
@@ -30,6 +34,8 @@
 | `get_property` | Live details and status of one home |
 | `compare_properties` | Check homes against criteria and rank them |
 | `estimate_monthly_payment` | Calculate a loan payment |
+| `affordability_check` | Highest price under the 35 percent rule |
+| `area_price_stats` | Median price per square foot and per marla by area |
 | `request_viewing` | Simulated request, needs buyer approval |
 
 Comparison and payment logic are deterministic code, so the model does not do arithmetic or ranking from memory.
@@ -55,9 +61,13 @@ The prompt is in `realestate_agent/prompts.py`.
 
 The prompt explains reasons where a rule could otherwise seem arbitrary, such as "because listings change", so the model can apply it sensibly to cases the prompt does not list.
 
+## Evaluation
+
+`evals/run_evals.py` measures retrieval on 36 labelled questions and agent behaviour on 22 scenarios with automatic checks. See `evidence/eval_report.md`.
+
 ## Known limitations
 
 - Listings and documents are small and synthetic, so retrieval quality on a real corpus is untested.
-- The relevance floor was tuned on a few queries from this corpus only.
+- The relevance floor was tuned on queries from this corpus only, and the retrieval evaluation uses the same corpus.
 - Saved memory is read once per session, so another session's edits appear only in the next session.
-- There is no login. `--user` is trusted as given, which is acceptable only for a demo.
+- There is no login. Locally the buyer name is trusted as given. On a public deployment each name is scoped to a signed per-browser cookie, so one visitor cannot read another's profile, but there are no accounts.

@@ -88,3 +88,51 @@ def test_retired_model_is_rediscovered_and_retried():
     out = asyncio.run(g._create(system="s", tools=[], messages=[{"role": "user", "content": "hi"}], max_tokens=100))
     assert out.content[0].text == "ok"
     assert completions.models == ["retired-model", "openai/gpt-oss-120b"]
+
+
+def test_stream_collector_rebuilds_text_and_tool_calls():
+    import asyncio
+    from types import SimpleNamespace as NS
+
+    from realestate_agent.llm import collect_openai_stream
+
+    def chunk(content=None, calls=None, finish=None):
+        return NS(choices=[NS(delta=NS(content=content, tool_calls=calls), finish_reason=finish)])
+
+    def call(index, id=None, name=None, args=None):
+        return NS(index=index, id=id, function=NS(name=name, arguments=args))
+
+    async def stream():
+        for c in [chunk("Let me "), chunk("check."),
+                  chunk(calls=[call(0, "c1", "get_property", '{"property_')]),
+                  chunk(calls=[call(0, args='id": "P-103"}')], finish="tool_calls")]:
+            yield c
+
+    seen = []
+    out = asyncio.run(collect_openai_stream(stream(), seen.append))
+    assert seen == ["Let me ", "check."]
+    assert out.stop_reason == "tool_use"
+    assert out.content[0].text == "Let me check."
+    assert out.content[1].name == "get_property" and out.content[1].input == {"property_id": "P-103"}
+
+
+def test_agent_streams_text_when_the_provider_can():
+    import asyncio
+    from types import SimpleNamespace as NS
+
+    from realestate_agent.agent import PropertyAgent
+    from realestate_agent.memory import LongTermMemory
+
+    class StreamingLLM:
+        streams_text = True
+
+        async def stream_create(self, *, on_text, **_):
+            for piece in ("Hello ", "there."):
+                on_text(piece)
+            return NS(stop_reason="end_turn", content=[NS(type="text", text="Hello there.")])
+
+    agent = PropertyAgent(StreamingLLM(), None, None, LongTermMemory(), "u", lambda *a: True, [])
+    pieces = []
+    agent.on_text = pieces.append
+    result = asyncio.run(agent.chat("hi"))
+    assert pieces == ["Hello ", "there."] and result.text == "Hello there."

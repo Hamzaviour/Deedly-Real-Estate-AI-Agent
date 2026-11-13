@@ -9,9 +9,9 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![Starlette](https://img.shields.io/badge/Starlette-ASGI-1A1D21)
 ![MCP](https://img.shields.io/badge/MCP-stdio%20server-17403C)
-![RAG](https://img.shields.io/badge/RAG-Chroma%20%2B%20fastembed-2E8A5C)
+![RAG](https://img.shields.io/badge/RAG-hybrid%20embeddings%20%2B%20BM25-2E8A5C)
 ![LLM](https://img.shields.io/badge/LLM-Groq%20%7C%20Anthropic-B4472C)
-![Tests](https://img.shields.io/badge/tests-68%20passing-2E8A5C)
+![Tests](https://img.shields.io/badge/tests-92%20passing-2E8A5C)
 
 Assignment 2, Agent Based Modeling (AIDE3313), scenario 38: *retrieve property details, remember buyer preferences and compare options.*
 
@@ -45,15 +45,15 @@ Assignment 2, Agent Based Modeling (AIDE3313), scenario 38: *retrieve property d
 
 ## Overview
 
-Deedly is a property portal with an AI agent built in. A buyer can search and filter homes across Johar Town, Allama Iqbal Town, Park View City, Gulberg and Model Town like on any listings site, then open the advisor, **Dee**, and ask in plain language:
+Deedly is a property portal with an AI agent built in. A buyer can search and filter 180 homes across 14 Lahore areas (Johar Town, Allama Iqbal Town, Model Town, Park View City, Gulberg, DHA Phase 5, DHA Phase 6, Lahore Cantt, Bahria Town, Lake City and Wapda Town, plus the farmhouse belts on Bedian, Barki and Raiwind Road), from 3 marla houses to 4 kanal bungalows and 10 kanal farmhouses, filtered by plot size, like on any listings site, on a grid or a map, then open the advisor, **Dee**, and ask in plain language:
 
 > *"My budget is 2.7 crore. I need at least 3 bedrooms, parking and a commute under 20 minutes. What fits?"*
 
 Behind that answer the agent:
 
-1. saves the budget to **long-term memory** (SQLite),
+1. saves the budget to **long-term memory** (SQLite locally, Postgres when hosted),
 2. searches live listings through a real **MCP server**,
-3. reads the buying guides through **RAG** and cites them,
+3. reads the buying guides through **hybrid RAG** and cites them, with every citation checked against what was actually retrieved,
 4. keeps the conversation as **short-term memory** for follow-ups like *"which of those is cheaper per square foot?"*,
 5. **re-plans** if a home is sold mid-conversation,
 6. and stops for **human approval** before sending any viewing request.
@@ -83,12 +83,17 @@ Every one of those steps is shown on screen as it happens, so the agent's work c
 ### For the buyer
 
 - **Portal-style search.** Type tabs (houses, apartments, townhouses), location, max price, bedrooms and keyword, plus quick area chips.
-- **Browse by area.** Five Lahore neighbourhoods with home counts and starting prices.
+- **Browse by area.** Eight Lahore neighbourhoods with home counts and starting prices.
+- **Map view.** Switch the listings between a grid and an OpenStreetMap map (Leaflet). Pins follow the active filters and are coloured by status.
 - **Listing grid.** Sort by price, value per square foot, newest or shortest commute. Filter to available homes only. Every active filter shows as a removable chip.
 - **Shortlist.** A heart on every home. The shortlist is stored in the buyer's long-term memory, so the agent knows about it in later sessions.
 - **Compare.** Pick two or three homes for a side-by-side table that ticks the best price, value, size, commute and estimated monthly payment, then ask Dee to recommend one.
 - **Home sheet.** Photo gallery (arrow keys work), facts, features and a **mortgage calculator** with deposit, rate and term sliders. It uses the same formula as the agent's payment tool, so the numbers always agree.
-- **Advisor drawer.** Chat with Dee. Homes named in an answer appear as cards and are highlighted in the grid as *Advisor picks*.
+- **Advisor drawer.** Chat with Dee. Answers stream in word by word. Homes named in an answer appear as cards and are highlighted in the grid as *Advisor picks*.
+- **Checkable sources.** Every citation in an answer is a button that opens the exact passage Dee retrieved.
+- **Chat and grid in sync.** When Dee searches listings, the grid switches to the same filters. *Ask about these* sends the current filters or shortlist to Dee.
+- **Urdu.** A language switch makes Dee reply in Urdu script, keeping listing ids, amounts and citations unchanged.
+- **Save as PDF.** Export the current results, the shortlist or a comparison as a printable report.
 
 ### For the marker
 
@@ -97,6 +102,8 @@ Every one of those steps is shown on screen as it happens, so the agent's work c
 - **Record dropdown.** Saved memory, raw tool input and output, and retrieved sources with similarity scores.
 - **Re-planning control.** Each card has a status control. Mark a home sold and ask about it to watch the agent re-check.
 - **Approval gate.** Viewing requests show exactly what will be sent and wait for Approve or Decline. Declining means the MCP server is never called.
+- **Grounding check.** A sentence that cites a passage the agent never retrieved is removed before the buyer sees it, and a notice says so.
+- **Evaluation report.** `python -m evals.run_evals` scores retrieval (hit@k, MRR, off-topic rejection) and 22 scripted agent scenarios, and writes `evidence/eval_report.md`.
 
 ### Dee, the live mascot
 
@@ -146,13 +153,15 @@ More detail, including the system prompt justification, is in [docs/ARCHITECTURE
 |---|---|---|
 | Python agent + LLM | `realestate_agent/agent.py`, `llm.py` | Agent bar *LLM* dot, any answer |
 | Short-term memory | `PropertyAgent.messages` | Ask a follow-up: *"which is cheaper per sq ft?"* |
-| Long-term memory | `realestate_agent/memory.py` (SQLite) | State a budget or heart a home, start a new session, ask again |
-| RAG with citations, 6 documents | `knowledge/`, `realestate_agent/rag.py` | Ask about deposits or title checks, see green citations and `RAG` steps |
+| Long-term memory | `realestate_agent/memory.py` (SQLite, or Postgres via `DATABASE_URL`) | State a budget or heart a home, start a new session, ask again |
+| RAG with citations, 10 documents | `knowledge/`, `realestate_agent/rag.py` | Ask about deposits or title checks, see green citations and `RAG` steps, click one to read the passage |
+| Grounded answers | `PropertyAgent._check_grounding` in `agent.py` | Citations to unretrieved passages are removed with their sentence |
 | MCP client and server | `mcp_client.py`, `mcp_server.py` | `MCP` steps in chat, `tests/test_mcp.py` |
 | Prompt engineering | `realestate_agent/prompts.py` | Justified in `docs/ARCHITECTURE.md` |
 | Tests and error handling | `tests/` | `python -m pytest tests -v` |
+| Evaluation | `evals/` | `python -m evals.run_evals`, report in `evidence/eval_report.md` |
 | Human oversight | Approval gate in `agent.py` and `web.py` | Ask for a viewing |
-| Re-planning | Prompt rules + live status via MCP | Change a home's status, then ask about it |
+| Re-planning | Prompt rules + live status via MCP | Demo step 5 marks P-103 sold and asks about it, or use `/sold P-103` in the terminal chat |
 
 ---
 
@@ -185,8 +194,8 @@ real-estate-agent/
 │   ├── mcp_server.py            # FastMCP server exposing the listing tools
 │   ├── mcp_client.py            # MCP stdio client: list_tools / call_tool
 │   ├── properties.py            # Listing store, comparison and payment logic (SQLite)
-│   ├── rag.py                   # Chunking, embeddings, Chroma index, retrieval with citations
-│   ├── memory.py                # Long-term buyer memory (SQLite)
+│   ├── rag.py                   # Chunking, hybrid retrieval (embeddings + BM25), citations
+│   ├── memory.py                # Long-term buyer memory (SQLite or Postgres)
 │   ├── web.py                   # Starlette app: pages, chat stream, approval, shortlist, status
 │   ├── cli.py                   # Terminal chat
 │   ├── config.py                # Paths and settings
@@ -197,15 +206,19 @@ real-estate-agent/
 │       ├── fonts/               # Archivo variable font
 │       ├── brand/               # Logo, favicon, brand board
 │       └── homes/               # Listing photos, photos.json, CREDITS.md
-├── data/properties.json         # 12 synthetic listings (seed data)
-├── knowledge/                   # 6 Markdown guides used by RAG
-├── tests/                       # 68 tests: agent, MCP, RAG, memory, properties, web, Groq adapter
+├── data/properties.json         # 180 synthetic listings (seed data)
+├── data/pk_photos.json          # Pakistani house photos used by generated listings (with licences)
+├── knowledge/                   # 10 Markdown guides used by RAG
+├── evals/                       # Retrieval and agent-behaviour evaluation harness
+├── scripts/                     # Listing generator, UI smoke server (no API key needed)
+├── .github/workflows/tests.yml  # CI: pytest with Postgres, retrieval evaluation
+├── tests/                       # 92 tests: agent, grounding, MCP, RAG, memory, properties, web, Groq adapter
 ├── docs/
 │   ├── ARCHITECTURE.md          # Design, components, prompt justification, limitations
 │   ├── architecture.png         # Architecture diagram
 │   ├── make_diagram.py          # Script that draws the diagram
 │   └── screenshots/             # Images used in this README
-├── evidence/test_results.txt    # Latest test run summary
+├── evidence/                    # Test results and the evaluation report
 ├── app.py                       # Hosted entrypoint (top-level ASGI app)
 ├── pyproject.toml               # Hosted dependency set and Vercel entrypoint
 ├── vercel.json                  # Function duration and bundle excludes
@@ -231,8 +244,8 @@ Runtime data (`runtime/`: SQLite databases and the Chroma index) is created on f
 ### Install
 
 ```bash
-git clone https://github.com/Hamzaviour/deedly-property-advisor.git
-cd deedly-property-advisor
+git clone https://github.com/Hamzaviour/Deedly-Real-Estate-AI-Agent.git
+cd Deedly-Real-Estate-AI-Agent
 python -m venv .venv
 # Windows
 .venv\Scripts\activate
@@ -275,7 +288,7 @@ Open **http://127.0.0.1:8011**. The server binds to localhost only and has no lo
 
 ### Demo script for a live presentation
 
-Open the advisor and run the five prompts in order. They are also listed in the drawer:
+Open the advisor and run the six prompts in order. They are also listed in the drawer:
 
 | # | Shows | Prompt |
 |---|---|---|
@@ -283,12 +296,28 @@ Open the advisor and run the five prompts in order. They are also listed in the 
 | 2 | Short-term memory | *Which of those is cheaper per square foot?* |
 | 3 | Compare + payment tool | *Compare P-103 and P-110, recommend one, and estimate the monthly payment using your planning assumptions.* |
 | 4 | RAG with citations | *How much deposit should I pay, and what should a lawyer check?* |
-| 5 | Human approval | *Request a viewing of P-110 on 2026-11-20 under the name Hamza.* |
+| 5 | Re-planning | Marks P-103 sold, then: *I've decided on P-103. Please re-check it and tell me what to do next.* |
+| 6 | Human approval | *Request a viewing of P-110 on 2026-11-20 under the name Hamza.* |
 
 Then:
 
-- **Re-planning:** set P-110 to *Sold* on its card and ask *"Is P-110 still my best option?"*
+- **Re-planning by hand:** set any home to *Sold* on its card and ask about it.
 - **Long-term memory across sessions:** click the refresh icon next to the buyer name (new session) and ask *"What's my budget?"*
+
+### How to see each agent feature
+
+The proof bar at the top of the page (LLM, Short-term, Long-term, RAG, MCP, Approval, Re-plan) lights up each time the agent uses that capability. Hover a dot to see what triggered it.
+
+| Feature | What to do | What you should see |
+|---|---|---|
+| **RAG** | Ask a procedure or area question: *"What should a lawyer check before I pay a deposit?"*, *"Is Lake City good for families?"*, *"How many square feet is a 5 kanal farmhouse?"* | Answer with citation chips such as `title verification`. Click a chip to open the exact source passage. The RAG dot turns on. |
+| **MCP tools** | Ask for listings: *"Show 1 kanal houses in DHA Phase 5 under 12 crore"* or *"Any farmhouses on Bedian Road?"* | The agent calls `search_properties` (with `min_marla`/`max_marla` for plot size) through the MCP server. The grid syncs to the same filters. |
+| **Short-term memory** | After a search, ask *"Which of those is cheapest per square foot?"* | The agent resolves "those" from this conversation without searching again. |
+| **Long-term memory** | Say *"My budget is 3 crore and I want a garden."* Then click the refresh icon next to the buyer name and ask *"What do you know about me?"* | The budget and garden preference come back in the new session. Memory count goes up in the top bar. |
+| **Re-planning** | Ask the agent to compare two homes (e.g. *"Compare P-103 and P-110"*). Then change P-103's status to **Sold** with the small status menu on its card and ask *"I'll go with P-103, what next?"* | The agent re-checks P-103, says it is sold, drops it and re-ranks the rest against the same criteria. The Re-plan dot turns on. In the terminal, use `/sold P-103`. |
+| **Human approval** | Ask *"Request a viewing of P-110 on 2026-11-20 under the name Hamza."* | An approval card appears with the home, date and name. Nothing is sent until you click **Approve request**. **Decline** cancels it. In the terminal you get `Approve ...? [y/N]`. |
+
+The advisor needs `GROQ_API_KEY` or `ANTHROPIC_API_KEY` in `.env`. Search, filters (type, area, price, bedrooms, plot size), map, shortlist, compare and the mortgage calculator work without one.
 
 ### Terminal chat
 
@@ -296,7 +325,7 @@ Then:
 python -m realestate_agent.cli --user hamza
 ```
 
-Viewing requests ask `Approve ...? [y/N]` in the terminal. Type `/quit` to leave. Start again with the same `--user` to see long-term memory.
+Viewing requests ask `Approve ...? [y/N]` in the terminal. Type `/sold P-103` to mark a home sold mid-conversation and watch the agent re-plan, or `/quit` to leave. Start again with the same `--user` to see long-term memory.
 
 ### Scripted end-to-end demo
 
@@ -327,7 +356,10 @@ python -m realestate_agent.ingest
 | `RE_AGENT_PROVIDER` | auto | `groq` or `anthropic`. Auto picks Anthropic if its key is set, otherwise Groq |
 | `RE_AGENT_PORT` | `8011` | Web server port |
 | `RE_AGENT_RUNTIME` | `./runtime` (`/tmp/deedly` on Vercel) | Where SQLite databases and the Chroma index are stored |
-| `RE_AGENT_RAG` | auto | `embeddings` or `lexical` (BM25). Auto uses embeddings when installed, BM25 on Vercel |
+| `RE_AGENT_RAG` | auto | `hybrid`, `embeddings` or `lexical` (BM25). Auto uses hybrid when embeddings are installed, BM25 on Vercel |
+| `DATABASE_URL` | | Postgres URL (for example Neon). When set, long-term memory is stored there instead of SQLite, so it survives serverless cold starts |
+| `RE_AGENT_SECRET` | random per process | Signs the browser cookie that scopes buyer names on a public deployment. Set it on Vercel so cookies work across instances |
+| `RE_AGENT_SCOPE_USERS` | off locally, on when hosted | `1` scopes each typed buyer name to the browser's signed cookie |
 | `RE_AGENT_CHAT_LIMIT` | `25` | Hosted only: chat messages per visitor per hour, to protect the API key |
 
 ---
@@ -340,7 +372,8 @@ All `POST` endpoints require `Content-Type: application/json`. Requests addresse
 |---|---|---|---|
 | `GET` | `/` | | The web app |
 | `GET` | `/api/state?user=` | | Listings, saved memory, shortlist, model name, MCP tools, whether the LLM is ready |
-| `POST` | `/api/chat` | `{user, message}` | NDJSON stream of `tool`, `approval` and `done` events |
+| `GET` | `/api/passage?id=` | | The full text behind a citation such as `03_financing_affordability.md#1` |
+| `POST` | `/api/chat` | `{user, message, lang}` | NDJSON stream of `text`, `tool`, `approval` and `done` events. `lang` is `en` or `ur` |
 | `POST` | `/api/approve` | `{user, id, approved}` | Resolves a pending viewing request |
 | `POST` | `/api/reset` | `{user}` | Starts a new session. Long-term memory is kept |
 | `POST` | `/api/shortlist` | `{user, id, on}` | Adds or removes a home in the buyer's shortlist memory |
@@ -358,9 +391,11 @@ Served by `realestate_agent/mcp_server.py` and discovered by the client at start
 | `get_property` | Live details and status of one home |
 | `compare_properties` | Check homes against the buyer's criteria and rank them |
 | `estimate_monthly_payment` | Amortised loan payment |
+| `affordability_check` | Highest price a buyer can plan for, using the financing guide's 35 percent rule |
+| `area_price_stats` | Median price, price per square foot and per marla by area |
 | `request_viewing` | Simulated viewing request. Gated by buyer approval |
 
-Local tools: `retrieve_knowledge` (RAG), `save_preference` and `forget_preference` (long-term memory).
+Local tools: `retrieve_knowledge` and `area_guide` (RAG), `save_preference` and `forget_preference` (long-term memory).
 
 Comparison and payment maths are deterministic Python, so the model never does arithmetic or ranking from memory.
 
@@ -382,7 +417,16 @@ No API key is needed. The tests use the real MCP server, real SQLite, real embed
 | `test_memory.py` | Save, replace, forget, isolation between buyers |
 | `test_properties.py` | Search, compare ranking, payment maths, status changes |
 | `test_web.py` | Pages, streaming chat, approval, sessions, shortlist, security checks |
-| `test_llm.py` | Groq adapter translation and provider selection |
+| `test_llm.py` | Groq adapter translation, streaming and provider selection |
+
+### Evaluation
+
+```bash
+python -m evals.run_evals --retrieval-only --compare-retrievers   # no API key needed
+python -m evals.run_evals                                        # adds the 22 agent scenarios
+```
+
+The retrieval part asks 36 questions (30 the documents cover, 6 they do not) and reports hit@1, hit@4, mean reciprocal rank and off-topic rejection, for each retriever on its own and for the hybrid. The agent part runs 22 scenarios against the real model, MCP server and retriever, each in fresh storage, and checks tool choice, verified citations, answer text, approvals and saved memory. Scenarios cover tool selection, short-term and long-term memory, RAG grounding, uncertainty, scope, policy, privacy, re-planning and human oversight. Results go to `evidence/eval_report.md` and `evidence/eval_results.json`.
 
 ---
 
@@ -401,9 +445,9 @@ The repository deploys to Vercel as a Python (ASGI) function with no extra setup
 Steps:
 
 1. Import the GitHub repository in Vercel, or run `vercel deploy --prod` from a clean clone.
-2. In **Project → Settings → Environment Variables**, add `GROQ_API_KEY` (or `ANTHROPIC_API_KEY`), then redeploy.
+2. In **Project → Settings → Environment Variables**, add `GROQ_API_KEY` (or `ANTHROPIC_API_KEY`) and `RE_AGENT_SECRET` (any long random string). Add `DATABASE_URL` for a Postgres database, such as Neon, to keep long-term memory across cold starts. Then redeploy.
 
-**Known trade-offs on serverless:** conversations, shortlists and status changes live in instance memory and `/tmp`, so a cold start resets them, and a viewing approval can expire if the platform moves the request to a different instance. For a demo that must behave exactly like local, run it locally or on a host with a long-running process and a persistent disk.
+**Known trade-offs on serverless:** conversations and status changes live in instance memory and `/tmp`, so a cold start resets them (long-term memory and shortlists persist when `DATABASE_URL` is set), and a viewing approval can expire if the platform moves the request to a different instance. For a demo that must behave exactly like local, run it locally or on a host with a long-running process and a persistent disk.
 
 ### Local or a long-running host
 
@@ -418,7 +462,7 @@ python -m realestate_agent.web
 
 - **Listings and documents** are synthetic, written for this coursework. Area names are real parts of Lahore.
 - **Photos** are illustrative, not the listed homes:
-  - Lahore photos from **Wikimedia Commons**, under CC BY and CC BY-SA licences. Each one shows its credit on the home sheet, and all are listed in [`realestate_agent/static/homes/CREDITS.md`](realestate_agent/static/homes/CREDITS.md).
+  - Real photos of Pakistani houses (Lahore, Islamabad, Rawalpindi, Faisalabad, Multan, Karachi and more) from **Wikimedia Commons**, under CC BY, CC BY-SA and public domain licences. `scripts/fetch_photos.py` downloads them and `scripts/generate_listings.py` assigns them by home size (marla houses, kanal houses, farmhouses). Each one shows its credit on the home sheet, and all are listed in [`realestate_agent/static/homes/CREDITS.md`](realestate_agent/static/homes/CREDITS.md).
   - Other photos from **Unsplash**, listed in the same file.
 - **Font:** Archivo (SIL Open Font License).
 - **Mascot and logo:** original artwork for this project.
@@ -429,17 +473,17 @@ python -m realestate_agent.web
 
 **Limitations**
 
-- Twelve synthetic listings and six short documents, so retrieval quality on a real corpus is untested.
+- 180 synthetic listings and ten short documents, so retrieval quality on a real corpus is untested. Pin positions on the map are placed approximately inside each area.
+- The hosted BM25 retriever matches words, so it can return a passage for an off-topic question that shares one word with the documents (67 percent off-topic rejection against 100 percent for hybrid). The prompt then requires the agent to say the passages do not answer it.
 - Sessions and pending approvals are held in memory, so a restart clears conversations (long-term memory survives).
 - Smaller open models on Groq choose tools less reliably than larger ones.
 
 **Ideas for next steps**
 
-- Stream answer text word by word
-- Map view with area boundaries
+- Area boundaries on the map
 - Area pages built from the neighbourhood guide
 - A "My viewings" panel for simulated requests
-- More listings and areas, such as DHA, Bahria Town, Wapda Town and Garden Town
+- Translate the whole interface, not only Dee's replies and the main labels
 
 ---
 
