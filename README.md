@@ -12,6 +12,7 @@
 ![RAG](https://img.shields.io/badge/RAG-hybrid%20embeddings%20%2B%20BM25-2E8A5C)
 ![LLM](https://img.shields.io/badge/LLM-Groq%20%7C%20Anthropic-B4472C)
 ![Tests](https://img.shields.io/badge/tests-92%20passing-2E8A5C)
+[![M8ven Score](https://m8ven.ai/badge/mcp/hamzaviour-deedly-real-estate-ai-agent-1na6qn?v=626cfb7be7513961b63e88492db93de1)](https://m8ven.ai/mcp/hamzaviour-deedly-real-estate-ai-agent-1na6qn?s=readme)
 
 **[🌐 Try the live demo](https://deedly-property-advisor.vercel.app/)**
 
